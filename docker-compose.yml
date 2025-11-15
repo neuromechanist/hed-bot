@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Ollama LLM serving with GPU support
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hed-bot-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # HED-BOT API service
+  hed-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hed-bot-api
+    depends_on:
+      - ollama
+    environment:
+      - LLM_BASE_URL=http://ollama:11434
+      - LLM_MODEL=llama3.2
+      - USE_JS_VALIDATOR=false
+      - HED_SCHEMA_VERSION=8.3.0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama_data:
+    driver: local
