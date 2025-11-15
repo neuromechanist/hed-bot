@@ -19,53 +19,43 @@ Multi-agent system for converting natural language event descriptions into valid
 ## Architecture
 
 ```mermaid
-flowchart TD
-    Start([Natural Language Input]) --> LoadSchema[Load JSON Schema<br/>Short-form vocabulary<br/>extensionAllowed tags]
-    LoadSchema --> Annotate[Annotation Agent<br/>Generate HED annotation]
+flowchart LR
+    Start([Input]) --> Schema[(JSON Schema<br/>Vocabulary)]
+    Schema --> Ann[Annotation Agent]
 
-    Annotate --> Validate{Validation Agent<br/>Check syntax & validity}
+    Ann --> Val{Validation}
+    Val -->|Invalid<br/>retry| ValErr[Syntax Errors]
+    ValErr --> Ann
+    Val -->|Max attempts| Fail[Failed]
 
-    Validate -->|Valid| Evaluate{Evaluation Agent<br/>Check faithfulness<br/>Validate tags vs schema<br/>Suggest closest matches}
-    Validate -->|Invalid &<br/>attempts < max| ValidationFeedback[Validation Errors:<br/>- TAG_INVALID<br/>- PARENTHESES_MISMATCH<br/>- COMMA_MISSING]
-    Validate -->|Invalid &<br/>attempts = max| MaxAttempts[Max Attempts Reached]
+    Val -->|Valid| Eval{Evaluation}
+    Eval -->|Not faithful| EvalErr[Tag Suggestions<br/>Extension Warnings]
+    EvalErr --> Ann
 
-    ValidationFeedback --> Annotate
-    MaxAttempts --> End
+    Eval -->|Faithful| Assess{Assessment}
+    Assess -->|Incomplete| AssErr[Missing Elements]
+    AssErr -.Optional.-> Ann
 
-    Evaluate -->|Faithful| Assess{Assessment Agent<br/>Check completeness<br/>Identify missing elements}
-    Evaluate -->|Not Faithful| EvaluationFeedback[Evaluation Feedback:<br/>- Missing elements<br/>- Invalid tags suggestions<br/>- Extension warnings]
-
-    EvaluationFeedback --> Annotate
-
-    Assess -->|Complete| Success[Final HED Annotation<br/>+ All Feedback]
-    Assess -->|Incomplete<br/>optional refinement| AssessmentFeedback[Assessment Feedback:<br/>- Missing dimensions<br/>- Optional enhancements<br/>- Completeness report]
-
-    AssessmentFeedback -.->|Optional<br/>refinement| Annotate
-    AssessmentFeedback -->|Report only| Success
-
-    Success --> End([Return Annotation<br/>+ Validation Status<br/>+ Evaluation Feedback<br/>+ Assessment Report])
+    Assess -->|Complete| Success[Final Annotation]
+    AssErr -->|Report| Success
+    Success --> End([Output])
+    Fail --> End
 
     style Start fill:#e1f5ff
     style End fill:#e1f5ff
-    style Annotate fill:#fff4e1
-    style Validate fill:#ffe1e1
-    style Evaluate fill:#e1ffe1
+    style Ann fill:#fff4e1
+    style Val fill:#ffe1e1
+    style Eval fill:#e1ffe1
     style Assess fill:#f0e1ff
     style Success fill:#e1ffe1
-    style MaxAttempts fill:#ffe1e1
-
-    subgraph "Feedback Loops"
-        ValidationFeedback
-        EvaluationFeedback
-        AssessmentFeedback
-    end
-
-    subgraph "External Resources"
-        LoadSchema
-        SchemaDir[JSON Schemas<br/>schemas_latest_json/]
-        LoadSchema -.-> SchemaDir
-    end
+    style Fail fill:#ffe1e1
+    style Schema fill:#e8e8e8
 ```
+
+**Legend:**
+- 🔄 **Solid arrows**: Automatic loops
+- ⋯⋯ **Dotted arrows**: Optional refinement
+- 🔵 Input/Output | 🟡 Annotation | 🔴 Validation | 🟢 Evaluation | 🟣 Assessment
 
 ### Workflow Details
 
