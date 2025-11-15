@@ -5,24 +5,94 @@ Multi-agent system for converting natural language event descriptions into valid
 ## Features
 
 - **Multi-Agent Architecture**: Uses LangGraph to orchestrate specialized agents
-  - Annotation Agent: Generates initial HED tags
-  - Validation Agent: Validates HED compliance
-  - Evaluation Agent: Assesses annotation faithfulness
-  - Assessment Agent: Identifies missing elements
+  - **Annotation Agent**: Generates HED tags using JSON schema vocabulary (short-form tags)
+  - **Validation Agent**: Validates HED compliance with detailed error feedback
+  - **Evaluation Agent**: Assesses faithfulness & suggests closest tag matches
+  - **Assessment Agent**: Identifies missing elements & dimensions
 
+- **JSON Schema Support**: Uses official HED JSON schemas with short-form tags and extensionAllowed detection
+- **Intelligent Validation**: Multi-stage validation with feedback loops and closest match suggestions
 - **Local LLM Serving**: Supports vLLM or Ollama for efficient multi-user inference
-- **Comprehensive Validation**: Integrates HED JavaScript validator for detailed feedback
 - **GPU Acceleration**: Optimized for NVIDIA RTX 4090 with CUDA support
 - **Scalable**: Designed for 10-15 concurrent users
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    Start([Natural Language Input]) --> LoadSchema[Load JSON Schema<br/>Short-form vocabulary<br/>extensionAllowed tags]
+    LoadSchema --> Annotate[Annotation Agent<br/>Generate HED annotation]
+
+    Annotate --> Validate{Validation Agent<br/>Check syntax & validity}
+
+    Validate -->|Valid| Evaluate{Evaluation Agent<br/>Check faithfulness<br/>Validate tags vs schema<br/>Suggest closest matches}
+    Validate -->|Invalid &<br/>attempts < max| ValidationFeedback[Validation Errors:<br/>- TAG_INVALID<br/>- PARENTHESES_MISMATCH<br/>- COMMA_MISSING]
+    Validate -->|Invalid &<br/>attempts = max| MaxAttempts[Max Attempts Reached]
+
+    ValidationFeedback --> Annotate
+    MaxAttempts --> End
+
+    Evaluate -->|Faithful| Assess{Assessment Agent<br/>Check completeness<br/>Identify missing elements}
+    Evaluate -->|Not Faithful| EvaluationFeedback[Evaluation Feedback:<br/>- Missing elements<br/>- Invalid tags suggestions<br/>- Extension warnings]
+
+    EvaluationFeedback --> Annotate
+
+    Assess -->|Complete| Success[Final HED Annotation<br/>+ All Feedback]
+    Assess -->|Incomplete<br/>optional refinement| AssessmentFeedback[Assessment Feedback:<br/>- Missing dimensions<br/>- Optional enhancements<br/>- Completeness report]
+
+    AssessmentFeedback -.->|Optional<br/>refinement| Annotate
+    AssessmentFeedback -->|Report only| Success
+
+    Success --> End([Return Annotation<br/>+ Validation Status<br/>+ Evaluation Feedback<br/>+ Assessment Report])
+
+    style Start fill:#e1f5ff
+    style End fill:#e1f5ff
+    style Annotate fill:#fff4e1
+    style Validate fill:#ffe1e1
+    style Evaluate fill:#e1ffe1
+    style Assess fill:#f0e1ff
+    style Success fill:#e1ffe1
+    style MaxAttempts fill:#ffe1e1
+
+    subgraph "Feedback Loops"
+        ValidationFeedback
+        EvaluationFeedback
+        AssessmentFeedback
+    end
+
+    subgraph "External Resources"
+        LoadSchema
+        SchemaDir[JSON Schemas<br/>schemas_latest_json/]
+        LoadSchema -.-> SchemaDir
+    end
 ```
-Natural Language → Annotation Agent → Validation Agent → Evaluation Agent → Assessment Agent → HED Tags
-                         ↑                    ↓
-                         └────────────────────┘
-                         (feedback loop)
-```
+
+### Workflow Details
+
+1. **Annotation Loop** (Automatic):
+   - Generates HED annotation using short-form tags
+   - Uses complete HED syntax rules (parentheses, curly braces, #, /)
+   - Considers extensionAllowed tags for extensions
+   - Maximum validation attempts: 5 (configurable)
+
+2. **Validation Loop** (Automatic):
+   - Checks syntax and tag validity
+   - Provides specific error codes and messages
+   - Loops back to annotation agent if errors found
+   - Stops if max attempts reached
+
+3. **Evaluation Loop** (Automatic):
+   - Assesses faithfulness to original description
+   - Validates tags against JSON schema vocabulary
+   - Suggests closest matches for invalid tags
+   - Warns about non-portable tag extensions
+   - Loops back if not faithful
+
+4. **Assessment Loop** (Optional):
+   - Final completeness check
+   - Identifies missing dimensions
+   - Can trigger optional refinement or report only
+   - Configurable behavior
 
 ## Installation
 
