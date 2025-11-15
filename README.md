@@ -121,14 +121,17 @@ npm run build
 ## Usage
 
 ### Start the Backend Server
+
 ```bash
-uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 38427
 ```
 
 ### API Endpoints
+
 - `POST /annotate`: Generate HED annotation from natural language
 - `POST /validate`: Validate HED annotation
 - `GET /health`: Health check
+- API URL: `http://localhost:38427`
 
 ## Development
 

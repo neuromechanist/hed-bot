@@ -37,7 +37,7 @@ services:
       - USE_JS_VALIDATOR=false
       - HED_SCHEMA_VERSION=8.3.0
     ports:
-      - "8000:8000"
+      - "38427:38427"
     volumes:
       - ./src:/app/src
     restart: unless-stopped

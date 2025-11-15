@@ -186,7 +186,7 @@ docker-compose up -d
 docker exec -it hed-bot-ollama ollama pull llama3.2
 
 # Test
-curl http://localhost:8000/health
+curl http://localhost:38427/health
 
 # Open frontend
 open frontend/index.html
@@ -218,7 +218,7 @@ open frontend/index.html
 ### Generate Annotation
 
 ```bash
-curl -X POST "http://localhost:8000/annotate" \
+curl -X POST "http://localhost:38427/annotate" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "A red circle appears on the left side of the screen",
@@ -230,7 +230,7 @@ curl -X POST "http://localhost:8000/annotate" \
 ### Validate HED String
 
 ```bash
-curl -X POST "http://localhost:8000/validate" \
+curl -X POST "http://localhost:38427/validate" \
   -H "Content-Type: application/json" \
   -d '{
     "hed_string": "Sensory-event, Visual-presentation",

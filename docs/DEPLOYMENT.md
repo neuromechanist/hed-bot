@@ -51,9 +51,9 @@ docker exec -it hed-bot-ollama ollama pull llama3.2:70b
 
 ### 4. Access the Service
 
-- API: http://localhost:8000
+- API: http://localhost:38427
 - Frontend: Open `frontend/index.html` in a browser
-- API Docs: http://localhost:8000/docs
+- API Docs: http://localhost:38427/docs
 
 ## Manual Deployment (without Docker)
 
@@ -95,7 +95,7 @@ ollama pull llama3.2
 ### 5. Start HED-BOT API
 
 ```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn src.api.main:app --host 0.0.0.0 --port 38427 --workers 4
 ```
 
 ### 6. Serve Frontend
@@ -137,7 +137,7 @@ credentials-file: /home/user/.cloudflared/<TUNNEL_ID>.json
 
 ingress:
   - hostname: hed-bot.yourdomain.com
-    service: http://localhost:8000
+    service: http://localhost:38427
   - service: http_status:404
 ```
 
@@ -155,7 +155,7 @@ server {
     server_name hed-bot.yourdomain.com;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:38427;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -179,7 +179,7 @@ Type=simple
 User=youruser
 WorkingDirectory=/path/to/hed-bot
 Environment="PATH=/home/youruser/miniconda3/envs/hed-bot/bin"
-ExecStart=/home/youruser/miniconda3/envs/hed-bot/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+ExecStart=/home/youruser/miniconda3/envs/hed-bot/bin/uvicorn src.api.main:app --host 0.0.0.0 --port 38427 --workers 4
 Restart=always
 RestartSec=10
 
@@ -221,7 +221,7 @@ sudo systemctl status hed-bot
 
 ```bash
 # Check API health
-curl http://localhost:8000/health
+curl http://localhost:38427/health
 
 # Check Ollama
 curl http://localhost:11434/api/tags

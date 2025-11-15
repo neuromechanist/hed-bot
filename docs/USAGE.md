@@ -39,7 +39,7 @@ The system provides:
 ### Base URL
 
 ```
-http://localhost:8000
+http://localhost:38427
 ```
 
 ### Endpoints
@@ -49,7 +49,7 @@ http://localhost:8000
 **POST** `/annotate`
 
 ```bash
-curl -X POST "http://localhost:8000/annotate" \
+curl -X POST "http://localhost:38427/annotate" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "A red circle appears on the left side of the screen",
@@ -79,7 +79,7 @@ curl -X POST "http://localhost:8000/annotate" \
 **POST** `/validate`
 
 ```bash
-curl -X POST "http://localhost:8000/validate" \
+curl -X POST "http://localhost:38427/validate" \
   -H "Content-Type": application/json" \
   -d '{
     "hed_string": "Sensory-event, Visual-presentation",
@@ -102,7 +102,7 @@ curl -X POST "http://localhost:8000/validate" \
 **GET** `/health`
 
 ```bash
-curl "http://localhost:8000/health"
+curl "http://localhost:38427/health"
 ```
 
 **Response**:
@@ -126,7 +126,7 @@ import asyncio
 async def annotate_event(description: str):
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            "http://localhost:8000/annotate",
+            "http://localhost:38427/annotate",
             json={
                 "description": description,
                 "schema_version": "8.3.0",
@@ -151,7 +151,7 @@ async def batch_annotate(descriptions: list[str]):
     async with httpx.AsyncClient(timeout=120.0) as client:
         tasks = [
             client.post(
-                "http://localhost:8000/annotate",
+                "http://localhost:38427/annotate",
                 json={"description": desc}
             )
             for desc in descriptions
@@ -261,7 +261,7 @@ Final check for:
 ### Custom Schema Versions
 
 ```bash
-curl -X POST "http://localhost:8000/annotate" \
+curl -X POST "http://localhost:38427/annotate" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "...",
@@ -272,7 +272,7 @@ curl -X POST "http://localhost:8000/annotate" \
 ### Adjusting Max Attempts
 
 ```bash
-curl -X POST "http://localhost:8000/annotate" \
+curl -X POST "http://localhost:38427/annotate" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "...",

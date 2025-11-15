@@ -11,7 +11,7 @@ The HED-BOT frontend is a single-page HTML application that connects to the Fast
 1. **Start the backend**:
    ```bash
    cd /Users/yahya/Documents/git/HED/hed-bot
-   uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+   uvicorn src.api.main:app --host 0.0.0.0 --port 38427
    ```
 
 2. **Open the frontend**:
@@ -20,13 +20,13 @@ The HED-BOT frontend is a single-page HTML application that connects to the Fast
    # Or just double-click frontend/index.html in Finder
    ```
 
-3. **That's it!** The frontend will connect to `http://localhost:8000`
+3. **That's it!** The frontend will connect to `http://localhost:38427`
 
 ### Option 2: Serve via HTTP Server (Recommended for Production)
 
 1. **Start the backend**:
    ```bash
-   uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+   uvicorn src.api.main:app --host 0.0.0.0 --port 38427
    ```
 
 2. **Serve the frontend**:
@@ -69,17 +69,17 @@ The HED-BOT frontend is a single-page HTML application that connects to the Fast
 The frontend connects to the backend via the `API_URL` constant (line 260 in `index.html`):
 
 ```javascript
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://localhost:38427';
 ```
 
 **For different deployments**:
 
 | Deployment | API_URL |
 |------------|---------|
-| Local development | `http://localhost:8000` |
-| Same machine, different port | `http://localhost:8000` |
+| Local development | `http://localhost:38427` |
+| Same machine, different port | `http://localhost:38427` |
 | Remote server | `https://your-domain.com` |
-| Docker deployment | `http://hed-bot:8000` (internal) or `http://localhost:8000` (external) |
+| Docker deployment | `http://hed-bot:8000` (internal) or `http://localhost:38427` (external) |
 
 **CORS Note**: The backend already has CORS enabled for all origins (`allow_origins=["*"]`). For production, update this in `src/api/main.py`.
 
@@ -279,10 +279,10 @@ The frontend automatically:
 **Problem**: Cannot connect to backend
 
 **Solutions**:
-1. Check backend is running: `curl http://localhost:8000/health`
+1. Check backend is running: `curl http://localhost:38427/health`
 2. Verify API_URL in index.html matches backend address
 3. Check CORS settings if using different domains
-4. Ensure no firewall blocking port 8000
+4. Ensure no firewall blocking port 38427
 
 ### No Results Displayed
 
