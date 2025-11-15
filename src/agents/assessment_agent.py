@@ -4,6 +4,8 @@ This agent performs the final assessment to identify any still-missing
 elements or dimensions in the HED annotation.
 """
 
+from pathlib import Path
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -17,13 +19,15 @@ class AssessmentAgent:
     to provide annotators with feedback on completeness and missing elements.
     """
 
-    def __init__(self, llm: BaseChatModel) -> None:
+    def __init__(self, llm: BaseChatModel, schema_dir: Path | str | None = None) -> None:
         """Initialize the assessment agent.
 
         Args:
             llm: Language model for assessment
+            schema_dir: Directory containing JSON schemas (for future use)
         """
         self.llm = llm
+        self.schema_dir = schema_dir
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt for assessment.

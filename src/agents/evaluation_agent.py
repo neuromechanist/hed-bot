@@ -4,10 +4,13 @@ This agent evaluates how faithfully a HED annotation captures
 the original natural language event description.
 """
 
+from pathlib import Path
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import HedAnnotationState
+from src.utils.json_schema_loader import load_latest_schema
 
 
 class EvaluationAgent:
@@ -15,15 +18,19 @@ class EvaluationAgent:
 
     This agent compares the generated HED annotation against the original
     description to assess completeness, accuracy, and semantic fidelity.
+    Also suggests schema matches for tags that might not exist.
     """
 
-    def __init__(self, llm: BaseChatModel) -> None:
+    def __init__(self, llm: BaseChatModel, schema_dir: Path | str | None = None) -> None:
         """Initialize the evaluation agent.
 
         Args:
             llm: Language model for evaluation
+            schema_dir: Directory containing JSON schemas
         """
         self.llm = llm
+        self.schema_dir = schema_dir
+        self.json_schema_loader = None
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt for evaluation.
@@ -59,6 +66,11 @@ Your task is to assess how faithfully a HED annotation captures the original nat
 - What important details are missing?
 - What dimensions could be added for better description?
 - Are there implicit aspects that should be made explicit?
+
+### 5. Tag Validity Check
+- Are all tags from the HED schema vocabulary?
+- If invalid tags detected, suggest closest schema matches
+- Consider if tag extension is needed (extensionAllowed tags)
 
 ## Response Format
 
@@ -110,12 +122,24 @@ Provide a thorough evaluation following the specified format."""
         Returns:
             State update with evaluation feedback
         """
+        # Load schema if needed
+        if self.json_schema_loader is None:
+            self.json_schema_loader = load_latest_schema(self.schema_dir)
+
+        # Check for potentially invalid tags and suggest matches
+        annotation = state["current_annotation"]
+        suggestions = self._check_tags_and_suggest(annotation)
+
         # Build prompts
         system_prompt = self._build_system_prompt()
         user_prompt = self._build_user_prompt(
             state["input_description"],
-            state["current_annotation"],
+            annotation,
         )
+
+        # Add tag suggestions if any
+        if suggestions:
+            user_prompt += f"\n\n**Tag Suggestions**:\n{suggestions}"
 
         # Generate evaluation
         messages = [
@@ -135,3 +159,51 @@ Provide a thorough evaluation following the specified format."""
             "is_faithful": is_faithful,
             "messages": state.get("messages", []) + messages + [response],
         }
+
+    def _check_tags_and_suggest(self, annotation: str) -> str:
+        """Check annotation for invalid tags and suggest alternatives.
+
+        Args:
+            annotation: HED annotation string
+
+        Returns:
+            Suggestion text (empty if all tags valid)
+        """
+        if not self.json_schema_loader:
+            return ""
+
+        # Extract tags from annotation (simple tokenization)
+        # Remove parentheses, split by comma
+        cleaned = annotation.replace("(", "").replace(")", "")
+        tags = [t.strip() for t in cleaned.split(",")]
+
+        vocabulary = set(self.json_schema_loader.get_vocabulary())
+        suggestions = []
+
+        for tag in tags:
+            # Skip empty, value placeholders, or column references
+            if not tag or "#" in tag or "{" in tag:
+                continue
+
+            # Check if tag or its base (before /) is in vocabulary
+            base_tag = tag.split("/")[0]
+            if base_tag not in vocabulary:
+                # Find closest matches
+                matches = self.json_schema_loader.find_closest_match(base_tag)
+                if matches:
+                    suggestions.append(
+                        f"- '{base_tag}' not in schema. Did you mean: {', '.join(matches)}?"
+                    )
+                else:
+                    # Check if it's a valid extension
+                    if "/" in tag:
+                        if self.json_schema_loader.is_extendable(base_tag):
+                            suggestions.append(
+                                f"- '{tag}' uses extension (dataset-specific, non-portable)"
+                            )
+                        else:
+                            suggestions.append(
+                                f"- '{base_tag}' doesn't allow extension. Use schema tag instead."
+                            )
+
+        return "\n".join(suggestions) if suggestions else ""

@@ -4,11 +4,14 @@ This agent is responsible for converting natural language event descriptions
 into HED annotation strings, using vocabulary constraints and best practices.
 """
 
+from pathlib import Path
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import HedAnnotationState
-from src.utils.schema_loader import HedSchemaLoader
+from src.utils.hed_rules import get_complete_system_prompt
+from src.utils.json_schema_loader import HedJsonSchemaLoader, load_latest_schema
 
 
 class AnnotationAgent:
@@ -21,89 +24,46 @@ class AnnotationAgent:
     def __init__(
         self,
         llm: BaseChatModel,
-        schema_loader: HedSchemaLoader,
+        schema_dir: Path | str | None = None,
     ) -> None:
         """Initialize the annotation agent.
 
         Args:
             llm: Language model for generation
-            schema_loader: HED schema loader for vocabulary
+            schema_dir: Directory containing JSON schemas (optional)
         """
         self.llm = llm
-        self.schema_loader = schema_loader
+        self.schema_dir = schema_dir
+        self.json_schema_loader: HedJsonSchemaLoader | None = None
 
-    def _build_system_prompt(self, schema_version: str, vocabulary: list[str]) -> str:
+    def _load_json_schema(self, schema_version: str) -> HedJsonSchemaLoader:
+        """Load JSON schema for given version.
+
+        Args:
+            schema_version: Schema version (currently uses latest)
+
+        Returns:
+            Loaded JSON schema
+        """
+        # For now, always load latest
+        # TODO: Support version-specific loading
+        return load_latest_schema(self.schema_dir)
+
+    def _build_system_prompt(
+        self,
+        vocabulary: list[str],
+        extendable_tags: list[str],
+    ) -> str:
         """Build the system prompt for the annotation agent.
 
         Args:
-            schema_version: HED schema version
-            vocabulary: List of valid HED tags
+            vocabulary: List of valid short-form HED tags
+            extendable_tags: Tags that allow extension
 
         Returns:
-            System prompt string
+            Complete system prompt with all HED rules
         """
-        vocab_sample = ", ".join(vocabulary[:100])  # Show first 100 tags
-        vocab_note = f"... and {len(vocabulary) - 100} more tags" if len(vocabulary) > 100 else ""
-
-        return f"""You are an expert HED (Hierarchical Event Descriptors) annotation agent using schema version {schema_version}.
-
-Your task is to convert natural language event descriptions into valid HED annotation strings.
-
-## CRITICAL RULES
-
-### 1. Vocabulary Constraints
-You MUST use ONLY tags from the HED {schema_version} vocabulary. Do not invent or hallucinate tags.
-Available tags include: {vocab_sample}{vocab_note}
-
-### 2. Required Classifications
-Every event annotation MUST include:
-- An Event tag (Sensory-event, Agent-action, Data-feature, etc.)
-- A Task-event-role tag (Experimental-stimulus, Cue, Participant-response, etc.)
-
-### 3. Semantic Grouping Rules
-- Group object properties together: `(Red, Circle)` not `Red, Circle`
-- Nest agent-action-object: `Agent-action, ((Human-agent), (Press, (Mouse-button)))`
-- Use curly braces for column references: `{{column_name}}`
-- Keep independent concepts separate
-- Use directional pattern for relationships: `(A, (Relation-tag, B))`
-
-### 4. Sensory Events
-Every `Sensory-event` MUST have a sensory-modality tag like:
-- Visual-presentation
-- Auditory-presentation
-- Somatosensory-presentation
-
-### 5. Reversibility Principle
-Your annotation should be translatable back into coherent English.
-Example: `Sensory-event, Visual-presentation, (Red, Circle)` = "A sensory event is a visual presentation of a red circle"
-
-### 6. Common Patterns
-
-Simple sensory stimulus:
-```
-Sensory-event, Experimental-stimulus, Visual-presentation, (Red, Circle)
-```
-
-Agent action:
-```
-Agent-action, Participant-response, ((Human-agent, Experiment-participant), (Press, (Left, Mouse-button)))
-```
-
-Stimulus with location:
-```
-Sensory-event, Experimental-stimulus, Visual-presentation, ((Green, Square), (Center-of, Computer-screen))
-```
-
-### 7. Validation Feedback
-If you receive validation errors, carefully read them and fix the issues.
-Common fixes:
-- Invalid tag → Use correct tag from vocabulary
-- Missing parentheses → Add proper grouping
-- Wrong syntax → Follow HED format rules
-
-## Response Format
-Provide ONLY the HED annotation string, nothing else. No explanations, no markdown formatting.
-"""
+        return get_complete_system_prompt(vocabulary, extendable_tags)
 
     def _build_user_prompt(
         self,
@@ -144,15 +104,30 @@ Provide ONLY the HED annotation string."""
         Returns:
             State update with new annotation
         """
-        # Load schema and vocabulary
-        schema = self.schema_loader.load_schema(state["schema_version"])
-        vocabulary = self.schema_loader.get_schema_vocabulary(schema)
+        # Load JSON schema
+        if self.json_schema_loader is None:
+            self.json_schema_loader = self._load_json_schema(state["schema_version"])
 
-        # Build prompts
-        system_prompt = self._build_system_prompt(state["schema_version"], vocabulary)
+        # Get vocabulary and extensionAllowed tags
+        vocabulary = self.json_schema_loader.get_vocabulary()
+        extendable_tags_dict = self.json_schema_loader.get_extendable_tags()
+        extendable_tags = list(extendable_tags_dict.keys())
+
+        # Build prompts with complete HED rules
+        system_prompt = self._build_system_prompt(vocabulary, extendable_tags)
+
+        # Build user prompt with any feedback
+        feedbacks = []
+        if state["validation_errors"]:
+            feedbacks.extend(state["validation_errors"])
+        if state.get("evaluation_feedback") and not state.get("is_faithful"):
+            feedbacks.append(f"Evaluation feedback: {state['evaluation_feedback']}")
+        if state.get("assessment_feedback") and not state.get("is_complete"):
+            feedbacks.append(f"Assessment feedback: {state['assessment_feedback']}")
+
         user_prompt = self._build_user_prompt(
             state["input_description"],
-            state["validation_errors"] if state["validation_attempts"] > 0 else None,
+            feedbacks if feedbacks else None,
         )
 
         # Generate annotation

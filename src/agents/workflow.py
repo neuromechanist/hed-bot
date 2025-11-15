@@ -35,7 +35,7 @@ class HedAnnotationWorkflow:
     def __init__(
         self,
         llm: BaseChatModel,
-        schema_loader: HedSchemaLoader | None = None,
+        schema_dir: Path | str | None = None,
         validator_path: Path | None = None,
         use_js_validator: bool = True,
     ) -> None:
@@ -43,22 +43,27 @@ class HedAnnotationWorkflow:
 
         Args:
             llm: Language model for agents
-            schema_loader: HED schema loader (creates default if None)
+            schema_dir: Directory containing JSON schemas
             validator_path: Path to hed-javascript for validation
             use_js_validator: Whether to use JavaScript validator
         """
-        # Initialize schema loader
-        self.schema_loader = schema_loader or HedSchemaLoader()
+        # Store schema directory
+        self.schema_dir = schema_dir or Path(
+            "/Users/yahya/Documents/git/HED/hed-schemas/schemas_latest_json"
+        )
 
-        # Initialize agents
-        self.annotation_agent = AnnotationAgent(llm, self.schema_loader)
+        # Initialize legacy schema loader for validation
+        self.schema_loader = HedSchemaLoader()
+
+        # Initialize agents with JSON schema support
+        self.annotation_agent = AnnotationAgent(llm, schema_dir=self.schema_dir)
         self.validation_agent = ValidationAgent(
             self.schema_loader,
             use_javascript=use_js_validator,
             validator_path=validator_path,
         )
-        self.evaluation_agent = EvaluationAgent(llm)
-        self.assessment_agent = AssessmentAgent(llm)
+        self.evaluation_agent = EvaluationAgent(llm, schema_dir=self.schema_dir)
+        self.assessment_agent = AssessmentAgent(llm, schema_dir=self.schema_dir)
 
         # Build graph
         self.graph = self._build_graph()

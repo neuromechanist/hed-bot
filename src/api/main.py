@@ -44,6 +44,10 @@ async def lifespan(app: FastAPI):
     # Get configuration from environment
     llm_base_url = os.getenv("LLM_BASE_URL", "http://localhost:11434")
     llm_model = os.getenv("LLM_MODEL", "llama3.2")
+    schema_dir = os.getenv(
+        "HED_SCHEMA_DIR",
+        "/Users/yahya/Documents/git/HED/hed-schemas/schemas_latest_json",
+    )
     validator_path = os.getenv(
         "HED_VALIDATOR_PATH",
         "/Users/yahya/Documents/git/HED/hed-javascript",
@@ -57,13 +61,10 @@ async def lifespan(app: FastAPI):
         temperature=0.1,  # Low temperature for consistent annotations
     )
 
-    # Initialize schema loader
-    schema_loader = HedSchemaLoader()
-
-    # Initialize workflow
+    # Initialize workflow with JSON schema support
     workflow = HedAnnotationWorkflow(
         llm=llm,
-        schema_loader=schema_loader,
+        schema_dir=Path(schema_dir),
         validator_path=Path(validator_path) if use_js_validator else None,
         use_js_validator=use_js_validator,
     )
