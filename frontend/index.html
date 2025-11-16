@@ -491,11 +491,14 @@ Example: A red circle appears on the left side of the screen and the participant
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script>
-        // Backend API URL - Automatically detect based on current host
-        const API_URL = window.location.hostname === 'localhost'
+        // Backend API URL - Automatically detect based on environment
+        // For production: Set BACKEND_URL in your environment or use Cloudflare Tunnel URL
+        // For local development: Uses localhost:38427
+        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:38427'
-            : `http://${window.location.hostname}:38427`;
+            : (window.BACKEND_URL || 'https://your-tunnel-url.trycloudflare.com');
 
         async function generateAnnotation() {
             const description = document.getElementById('description').value.trim();
