@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Local development
+.env
+*.log
+
+# Frontend (served separately)
+frontend/
+
+# Tests (not needed in production)
+tests/
+
+# Docker itself
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Project management
+plan.md
+ideas.md
+scratch_notes.md
+research.md
+.context/

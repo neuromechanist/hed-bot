@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     npm \
     git \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python 3.11 as default
@@ -28,12 +29,28 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 # Set working directory
 WORKDIR /app
 
+# Clone HED repositories (self-contained)
+RUN git clone --depth 1 https://github.com/hed-standard/hed-schemas.git /app/hed-schemas && \
+    git clone --depth 1 https://github.com/hed-standard/hed-javascript.git /app/hed-javascript
+
+# Build HED JavaScript validator
+WORKDIR /app/hed-javascript
+RUN npm install && npm run build
+
+# Return to app directory
+WORKDIR /app
+
 # Copy project files
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
+# Install Python dependencies (regular install, not editable)
+RUN pip install --no-cache-dir .
+
+# Set environment variables for HED resources (internal paths)
+ENV HED_SCHEMA_DIR=/app/hed-schemas/schemas_latest_json \
+    HED_VALIDATOR_PATH=/app/hed-javascript \
+    USE_JS_VALIDATOR=true
 
 # Expose port
 EXPOSE 38427

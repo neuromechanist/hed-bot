@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Ollama LLM serving with GPU support
   ollama:
@@ -37,18 +35,20 @@ services:
     environment:
       - LLM_BASE_URL=http://ollama:11434
       - LLM_MODEL=gpt-oss:20b
-      - USE_JS_VALIDATOR=false
       - HED_SCHEMA_VERSION=8.3.0
+      # HED paths are set in Dockerfile, override here if needed
+      # - HED_SCHEMA_DIR=/app/hed-schemas/schemas_latest_json
+      # - HED_VALIDATOR_PATH=/app/hed-javascript
+      # - USE_JS_VALIDATOR=true
     ports:
       - "38427:38427"
-    volumes:
-      - ./src:/app/src
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:38427/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
 volumes:
   ollama_data:

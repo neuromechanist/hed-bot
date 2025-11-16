@@ -8,53 +8,69 @@ This guide covers deploying HED-BOT on a GPU workstation with persistent URL acc
 - NVIDIA GPU (tested on RTX 4090)
 - CUDA 12.2+ installed
 - Minimum 16GB RAM (32GB recommended for 10-15 concurrent users)
-- Minimum 50GB disk space
+- Minimum 50GB disk space (includes model + HED resources)
 
 ### Software
 - Docker with NVIDIA Container Toolkit
 - Docker Compose
-- Node.js 18+ (for JavaScript validator)
-- Python 3.11+
+
+**Note**: Python, Node.js, HED schemas, and HED JavaScript validator are all included in the Docker image. No external dependencies needed!
 
 ## Quick Start with Docker
 
-### 1. Clone and Setup
+### 1. Clone Repository
 
 ```bash
 cd /path/to/hed-bot
-cp .env.example .env
-# Edit .env with your configuration
 ```
 
-### 2. Build and Run
+### 2. Build and Run (Self-Contained)
 
 ```bash
-# Start all services with GPU support
+# Build and start all services
+# This will:
+# - Build Docker image with HED schemas and validator
+# - Start Ollama and HED-BOT containers
+# - Automatically pull gpt-oss:20b model on first start
 docker-compose up -d
+
+# Monitor first start (model download takes ~10-20 min)
+docker-compose logs -f
 
 # Check status
 docker-compose ps
-
-# View logs
-docker-compose logs -f hed-bot
 ```
 
-### 3. Pull LLM Model
+**What's Included in the Image:**
+- Python 3.11 + all dependencies
+- HED schemas (latest from GitHub)
+- HED JavaScript validator (built)
+- All self-contained, no external paths needed!
+
+### 3. Model Auto-Pull
+
+The `gpt-oss:20b` model is automatically pulled on first start. No manual intervention needed!
+
+### 4. Verify Deployment
 
 ```bash
-# Model is automatically pulled on first container start
-# Or manually pull the default model:
-docker exec -it hed-bot-ollama ollama pull gpt-oss:20b
+# Check API health
+curl http://localhost:38427/health
 
-# Alternative: Use a different model if needed
-docker exec -it hed-bot-ollama ollama pull llama3.2
+# Should return:
+# {
+#   "status": "healthy",
+#   "version": "0.1.0",
+#   "llm_available": true,
+#   "validator_available": true
+# }
 ```
 
-### 4. Access the Service
+### 5. Access the Service
 
-- API: http://localhost:38427
-- Frontend: Open `frontend/index.html` in a browser
-- API Docs: http://localhost:38427/docs
+- **API**: http://localhost:38427
+- **Frontend**: Open `frontend/index.html` in a browser
+- **API Docs**: http://localhost:38427/docs
 
 ## Manual Deployment (without Docker)
 

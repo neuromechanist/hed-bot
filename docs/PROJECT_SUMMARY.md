@@ -109,7 +109,8 @@ Final HED Annotation + Feedback
 - **Auto-Pull**: Model automatically downloaded on first container start
 
 ### 7. Containerized Deployment
-- **Docker**: Single-command deployment
+- **Docker**: Single-command deployment with all dependencies
+- **Self-Contained**: HED schemas and validator included in image
 - **Docker Compose**: Orchestration of API + Ollama
 - **GPU Passthrough**: NVIDIA runtime support
 - **Health Checks**: Automatic service monitoring
@@ -179,14 +180,15 @@ cd /Users/yahya/Documents/git/HED/hed-bot
 # Configure
 cp .env.example .env
 
-# Build and start (model auto-pulls on first start)
+# Build and start
+# - Includes HED schemas and JavaScript validator in image
+# - Auto-pulls gpt-oss:20b model on first start
 docker-compose up -d
 
-# Wait for model to download (first start only, ~10-20 min)
-# Check progress:
-docker logs -f hed-bot-ollama
+# Monitor first start (model download ~10-20 min)
+docker-compose logs -f
 
-# Test
+# Verify
 curl http://localhost:38427/health
 
 # Open frontend

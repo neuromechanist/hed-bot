@@ -87,36 +87,55 @@ flowchart LR
 
 ## Installation
 
-### Prerequisites
+### Docker (Recommended - Self-Contained)
+- Docker with NVIDIA Container Toolkit
+- Docker Compose
+- All dependencies (Python, Node.js, HED schemas, validator) included in image!
+
+### Local Development
 - Python 3.11+
 - CUDA-capable GPU (for LLM serving)
 - Node.js 18+ (for HED JavaScript validator)
 - Conda (recommended)
 
-### Setup
+### Quick Start (Docker)
 
-1. **Clone and navigate**:
 ```bash
-cd /Users/yahya/Documents/git/HED/hed-bot
+# Clone repository
+cd /path/to/hed-bot
+
+# Build and start (auto-pulls model and includes all HED resources)
+docker-compose up -d
+
+# Monitor first start (~10-20 min for model download)
+docker-compose logs -f
+
+# Verify
+curl http://localhost:38427/health
+
+# Open frontend
+open frontend/index.html
 ```
 
-2. **Create conda environment**:
+### Local Development Setup
+
+1. **Create conda environment**:
 ```bash
 source ~/miniconda3/etc/profile.d/conda.sh
 conda create -n hed-bot python=3.11 -y
 conda activate hed-bot
 ```
 
-3. **Install dependencies**:
+2. **Install dependencies**:
 ```bash
 pip install -e ".[dev]"
 ```
 
-4. **Install HED JavaScript validator** (for validation):
+3. **Clone HED resources** (if not using Docker):
 ```bash
-cd /Users/yahya/Documents/git/HED/hed-javascript
-npm install
-npm run build
+git clone https://github.com/hed-standard/hed-schemas.git ../hed-schemas
+git clone https://github.com/hed-standard/hed-javascript.git ../hed-javascript
+cd ../hed-javascript && npm install && npm run build && cd -
 ```
 
 ## Usage
