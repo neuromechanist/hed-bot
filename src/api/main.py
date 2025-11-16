@@ -69,6 +69,9 @@ async def lifespan(app: FastAPI):
         use_js_validator=use_js_validator,
     )
 
+    # Set global schema_loader from workflow
+    schema_loader = workflow.schema_loader
+
     print(f"Workflow initialized with LLM: {llm_model} at {llm_base_url}")
     print(f"Using JavaScript validator: {use_js_validator}")
 
