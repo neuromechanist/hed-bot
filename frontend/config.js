@@ -1,3 +1,4 @@
 // Backend API Configuration
-// Direct connection to Python FastAPI backend via Tailscale Funnel
-window.BACKEND_URL = 'https://jamming.tail75926.ts.net';
+// Cloudflare Worker proxy with caching and rate limiting
+// Backend runs via Cloudflare Tunnel (private, not directly exposed)
+window.BACKEND_URL = 'https://hed-bot-api.shirazi-10f.workers.dev';
