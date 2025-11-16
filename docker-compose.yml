@@ -7,7 +7,7 @@ services:
       - ollama_data:/root/.ollama
       - ./docker/ollama-entrypoint.sh:/entrypoint.sh
     ports:
-      - "11434:11434"
+      - "11435:11434"
     entrypoint: ["/bin/bash", "/entrypoint.sh"]
     deploy:
       resources:
@@ -35,6 +35,7 @@ services:
     environment:
       - LLM_BASE_URL=http://ollama:11434
       - LLM_MODEL=gpt-oss:20b
+      - OLLAMA_HOST=http://ollama:11434
       - HED_SCHEMA_VERSION=8.3.0
       # HED paths are set in Dockerfile, override here if needed
       # - HED_SCHEMA_DIR=/app/hed-schemas/schemas_latest_json

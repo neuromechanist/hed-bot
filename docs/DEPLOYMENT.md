@@ -242,7 +242,7 @@ sudo systemctl status hed-bot
 curl http://localhost:38427/health
 
 # Check Ollama
-curl http://localhost:11434/api/tags
+curl http://localhost:11435/api/tags
 ```
 
 ### Logs

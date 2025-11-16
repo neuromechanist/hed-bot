@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     print("Initializing HED-BOT annotation workflow...")
 
     # Get configuration from environment
-    llm_base_url = os.getenv("LLM_BASE_URL", "http://localhost:11434")
+    llm_base_url = os.getenv("LLM_BASE_URL", "http://localhost:11435")
     llm_model = os.getenv("LLM_MODEL", "gpt-oss:20b")
     schema_dir = os.getenv(
         "HED_SCHEMA_DIR",
