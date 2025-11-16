@@ -161,10 +161,14 @@ class HedAnnotationWorkflow:
         result = await self.evaluation_agent.evaluate(state)
         print(f"[WORKFLOW] Evaluation result: is_faithful={result.get('is_faithful')}")
 
-        # Set default assessment values if we'll skip assessment
-        if result.get('is_faithful') and state.get('is_valid'):
-            result['is_complete'] = True
-            result['assessment_feedback'] = "Annotation is valid and faithful to the original description."
+        # Set default assessment values if assessment will be skipped
+        run_assessment = state.get('run_assessment', False)
+        if not run_assessment:
+            result['is_complete'] = result.get('is_faithful', False) and state.get('is_valid', False)
+            if result['is_complete']:
+                result['assessment_feedback'] = "Annotation is valid and faithful to the original description."
+            else:
+                result['assessment_feedback'] = ""
 
         return result
 
@@ -216,20 +220,31 @@ class HedAnnotationWorkflow:
         # Check if max total iterations reached
         total_iters = state.get('total_iterations', 0)
         max_iters = state.get('max_total_iterations', 10)
+        run_assessment = state.get('run_assessment', False)
 
         if total_iters >= max_iters:
-            print(f"[WORKFLOW] Routing to assess (max total iterations {max_iters} reached)")
-            return "assess"
+            # Only run assessment at max iterations if explicitly requested
+            if run_assessment:
+                print(f"[WORKFLOW] Routing to assess (max total iterations {max_iters} reached)")
+                return "assess"
+            else:
+                print(f"[WORKFLOW] Skipping assessment (max iterations reached, assessment not requested) - routing to END")
+                return "end"
 
         if state["is_faithful"]:
-            # Skip assessment if annotation is valid and faithful
-            # Set default completeness feedback
-            if state.get("is_valid"):
-                print(f"[WORKFLOW] Skipping assessment (annotation is valid and faithful) - routing to END")
+            # Only run assessment if explicitly requested
+            if state.get("is_valid") and run_assessment:
+                print(f"[WORKFLOW] Routing to assess (annotation is valid and faithful, assessment requested)")
+                return "assess"
+            elif state.get("is_valid"):
+                print(f"[WORKFLOW] Skipping assessment (annotation is valid and faithful, assessment not requested) - routing to END")
                 return "end"
-            else:
+            elif run_assessment:
                 print(f"[WORKFLOW] Routing to assess (annotation is faithful but has validation issues)")
                 return "assess"
+            else:
+                print(f"[WORKFLOW] Skipping assessment (has validation issues, assessment not requested) - routing to END")
+                return "end"
         else:
             print(f"[WORKFLOW] Routing to annotate (annotation needs refinement, iteration {total_iters}/{max_iters})")
             return "annotate"
@@ -240,6 +255,7 @@ class HedAnnotationWorkflow:
         schema_version: str = "8.3.0",
         max_validation_attempts: int = 5,
         max_total_iterations: int = 10,
+        run_assessment: bool = False,
         config: dict | None = None,
     ) -> HedAnnotationState:
         """Run the complete annotation workflow.
@@ -249,6 +265,7 @@ class HedAnnotationWorkflow:
             schema_version: HED schema version to use
             max_validation_attempts: Maximum validation retry attempts
             max_total_iterations: Maximum total iterations to prevent infinite loops
+            run_assessment: Whether to run final assessment (default: False)
             config: Optional LangGraph config (e.g., recursion_limit)
 
         Returns:
@@ -263,6 +280,9 @@ class HedAnnotationWorkflow:
             max_validation_attempts,
             max_total_iterations,
         )
+
+        # Add run_assessment flag to state
+        initial_state['run_assessment'] = run_assessment
 
         # Run workflow
         final_state = await self.graph.ainvoke(initial_state, config=config)

@@ -10,6 +10,7 @@ class AnnotationRequest(BaseModel):
         description: Natural language event description to annotate
         schema_version: HED schema version to use
         max_validation_attempts: Maximum validation retry attempts
+        run_assessment: Whether to run final assessment (adds extra time)
     """
 
     description: str = Field(
@@ -28,6 +29,10 @@ class AnnotationRequest(BaseModel):
         description="Maximum validation retry attempts",
         ge=1,
         le=10,
+    )
+    run_assessment: bool = Field(
+        default=False,
+        description="Run final assessment for completeness (adds extra processing time)",
     )
 
 

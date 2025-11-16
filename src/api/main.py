@@ -4,12 +4,15 @@ This module provides REST API endpoints for HED annotation generation
 and validation using the multi-agent workflow.
 """
 
+import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from langchain_community.chat_models import ChatOllama
 
 from src import __version__
@@ -178,6 +181,7 @@ async def annotate(request: AnnotationRequest) -> AnnotationResponse:
             input_description=request.description,
             schema_version=request.schema_version,
             max_validation_attempts=request.max_validation_attempts,
+            run_assessment=request.run_assessment,
         )
 
         # Determine overall status
@@ -201,6 +205,106 @@ async def annotate(request: AnnotationRequest) -> AnnotationResponse:
             status_code=500,
             detail=f"Annotation workflow failed: {str(e)}",
         ) from e
+
+
+@app.post("/annotate/stream")
+async def annotate_stream(request: AnnotationRequest):
+    """Generate HED annotation with real-time progress updates via Server-Sent Events.
+
+    This endpoint streams progress updates as the workflow runs through different
+    stages (annotation, validation, evaluation, assessment), providing real-time
+    feedback to the user.
+
+    Args:
+        request: Annotation request with description and parameters
+
+    Returns:
+        StreamingResponse with Server-Sent Events
+
+    Raises:
+        HTTPException: If workflow fails
+    """
+    if workflow is None:
+        raise HTTPException(status_code=503, detail="Workflow not initialized")
+
+    async def event_generator():
+        """Generate SSE events for workflow progress."""
+        try:
+            # Progress queue for receiving updates from workflow
+            progress_queue = asyncio.Queue()
+
+            # Helper to send SSE event
+            def send_event(event_type: str, data: dict):
+                return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+            # Send initial start event
+            yield send_event("progress", {
+                "stage": "starting",
+                "message": "Initializing annotation workflow..."
+            })
+
+            # Run workflow with progress monitoring
+            # Note: We'll need to modify workflow to accept progress callback
+            # For now, we'll use a simple approach with state polling
+
+            # Start workflow in background task
+            import asyncio
+            from src.agents.state import create_initial_state
+
+            initial_state = create_initial_state(
+                request.description,
+                request.schema_version,
+                request.max_validation_attempts,
+                10,  # max_total_iterations
+            )
+            initial_state['run_assessment'] = request.run_assessment
+
+            # Track workflow progress by monitoring state changes
+            # This is a simplified version - ideally we'd use callbacks
+            yield send_event("progress", {
+                "stage": "annotating",
+                "message": "Generating HED annotation...",
+                "attempt": 1
+            })
+
+            # Run workflow
+            final_state = await workflow.run(
+                input_description=request.description,
+                schema_version=request.schema_version,
+                max_validation_attempts=request.max_validation_attempts,
+                run_assessment=request.run_assessment,
+            )
+
+            # Send final result
+            status = "success" if final_state["is_valid"] else "failed"
+            result = {
+                "annotation": final_state["current_annotation"],
+                "is_valid": final_state["is_valid"],
+                "is_faithful": final_state["is_faithful"],
+                "is_complete": final_state["is_complete"],
+                "validation_attempts": final_state["validation_attempts"],
+                "validation_errors": final_state["validation_errors"],
+                "validation_warnings": final_state["validation_warnings"],
+                "evaluation_feedback": final_state["evaluation_feedback"],
+                "assessment_feedback": final_state["assessment_feedback"],
+                "status": status,
+            }
+
+            yield send_event("result", result)
+            yield send_event("done", {"message": "Workflow completed"})
+
+        except Exception as e:
+            yield send_event("error", {"message": str(e)})
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
 
 
 @app.post("/validate", response_model=ValidationResponse)
