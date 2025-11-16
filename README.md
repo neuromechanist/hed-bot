@@ -7,6 +7,7 @@ Multi-agent system for converting natural language event descriptions into valid
 - **Multi-Agent Architecture**: Uses LangGraph to orchestrate specialized agents
   - **Annotation Agent**: Generates HED tags using JSON schema vocabulary (short-form tags)
   - **Validation Agent**: Validates HED compliance with detailed error feedback
+  - **Feedback Summarizer**: Condenses errors and feedback for efficient iteration
   - **Evaluation Agent**: Assesses faithfulness & suggests closest tag matches
   - **Assessment Agent**: Identifies missing elements & dimensions
 
@@ -25,13 +26,13 @@ flowchart LR
     Schema --> Ann[Annotation Agent]
 
     Ann --> Val{Validation}
-    Val -->|Invalid<br/>retry| ValErr[Syntax Errors]
-    ValErr --> Ann
+    Val -->|Invalid<br/>retry| Sum1[Feedback<br/>Summarizer]
+    Sum1 --> Ann
     Val -->|Max attempts| Fail[Failed]
 
     Val -->|Valid| Eval{Evaluation}
-    Eval -->|Not faithful| EvalErr[Tag Suggestions<br/>Extension Warnings]
-    EvalErr --> Ann
+    Eval -->|Not faithful| Sum2[Feedback<br/>Summarizer]
+    Sum2 --> Ann
 
     Eval -->|Faithful| Assess{Assessment}
     Assess -->|Incomplete| AssErr[Missing Elements]
@@ -48,6 +49,8 @@ flowchart LR
     style Val fill:#ffe1e1
     style Eval fill:#e1ffe1
     style Assess fill:#f0e1ff
+    style Sum1 fill:#ffe8cc
+    style Sum2 fill:#ffe8cc
     style Success fill:#e1ffe1
     style Fail fill:#ffe1e1
     style Schema fill:#e8e8e8
@@ -56,7 +59,7 @@ flowchart LR
 **Legend:**
 - 🔄 **Solid arrows**: Automatic loops
 - ⋯⋯ **Dotted arrows**: Optional refinement
-- 🔵 Input/Output | 🟡 Annotation | 🔴 Validation | 🟢 Evaluation | 🟣 Assessment
+- 🔵 Input/Output | 🟡 Annotation | 🔴 Validation | 🟢 Evaluation | 🟣 Assessment | 🟠 Feedback Processing
 
 ### Workflow Details
 
@@ -69,7 +72,7 @@ flowchart LR
 2. **Validation Loop** (Automatic):
    - Checks syntax and tag validity
    - Provides specific error codes and messages
-   - Loops back to annotation agent if errors found
+   - If errors found → Feedback Summarizer condenses errors → loops back to annotation
    - Stops if max attempts reached
 
 3. **Evaluation Loop** (Automatic):
@@ -77,9 +80,15 @@ flowchart LR
    - Validates tags against JSON schema vocabulary
    - Suggests closest matches for invalid tags
    - Warns about non-portable tag extensions
-   - Loops back if not faithful
+   - If not faithful → Feedback Summarizer condenses feedback → loops back to annotation
 
-4. **Assessment Loop** (Optional):
+4. **Feedback Summarizer** (Automatic):
+   - Condenses validation errors and evaluation feedback
+   - Reduces token usage in loops
+   - Prioritizes most important issues
+   - Provides concise, actionable guidance
+
+5. **Assessment Loop** (Optional):
    - Final completeness check
    - Identifies missing dimensions
    - Can trigger optional refinement or report only
