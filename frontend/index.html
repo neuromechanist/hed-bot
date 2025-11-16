@@ -336,10 +336,10 @@ Example: A red circle appears on the left side of the screen and the participant
     </div>
 
     <script>
-        // Backend API URL - Change this for production deployment
-        // For local development: http://localhost:38427
-        // For remote server: https://your-domain.com
-        const API_URL = 'http://localhost:38427';
+        // Backend API URL - Automatically detect based on current host
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:38427'
+            : `http://${window.location.hostname}:38427`;
 
         async function generateAnnotation() {
             const description = document.getElementById('description').value.trim();
