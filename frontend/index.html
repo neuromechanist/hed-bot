@@ -198,6 +198,74 @@
             margin-top: 10px;
             width: auto;
         }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .checkbox-container label {
+            margin: 0;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .checkbox-help {
+            font-size: 12px;
+            color: #666;
+            margin-left: 30px;
+        }
+
+        .progress-status {
+            display: none;
+            padding: 12px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-weight: 500;
+            color: #1976d2;
+        }
+
+        .progress-status.active {
+            display: block;
+        }
+
+        .progress-steps {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .progress-step {
+            padding: 4px 12px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            font-size: 12px;
+            opacity: 0.5;
+        }
+
+        .progress-step.active {
+            background: #4caf50;
+            color: white;
+            opacity: 1;
+        }
+
+        .progress-step.completed {
+            background: #90caf9;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -217,18 +285,29 @@ Example: A red circle appears on the left side of the screen and the participant
             <div>
                 <label for="schema">HED Schema Version</label>
                 <select id="schema">
-                    <option value="8.3.0" selected>8.3.0 (Latest Stable)</option>
-                    <option value="8.4.0">8.4.0 (Prerelease)</option>
+                    <option value="8.3.0">8.3.0 (Stable)</option>
+                    <option value="8.4.0" selected>8.4.0 (Latest)</option>
                     <option value="8.2.0">8.2.0</option>
                 </select>
             </div>
             <div>
                 <label for="maxAttempts">Max Validation Attempts</label>
-                <input type="number" id="maxAttempts" value="5" min="1" max="10">
+                <input type="number" id="maxAttempts" value="3" min="1" max="10">
             </div>
         </div>
 
+        <div class="checkbox-container">
+            <input type="checkbox" id="runAssessment" />
+            <label for="runAssessment">Run detailed assessment (adds ~3 seconds)</label>
+            <div class="checkbox-help">Provides comprehensive completeness feedback</div>
+        </div>
+
         <button id="generateBtn" onclick="generateAnnotation()">Generate HED Annotation</button>
+
+        <div class="progress-status" id="progressStatus">
+            <div id="progressMessage">Initializing...</div>
+            <div class="progress-steps" id="progressSteps"></div>
+        </div>
 
         <div class="loading" id="loading">
             <p>Generating annotation... This may take a moment.</p>
@@ -266,16 +345,82 @@ Example: A red circle appears on the left side of the screen and the participant
             const description = document.getElementById('description').value.trim();
             const schema = document.getElementById('schema').value;
             const maxAttempts = parseInt(document.getElementById('maxAttempts').value);
+            const runAssessment = document.getElementById('runAssessment').checked;
 
             if (!description) {
                 alert('Please enter an event description');
                 return;
             }
 
-            // Show loading
-            document.getElementById('loading').classList.add('active');
+            // Hide results and show progress
             document.getElementById('results').classList.remove('active');
             document.getElementById('generateBtn').disabled = true;
+            document.getElementById('progressStatus').classList.add('active');
+
+            // Initialize progress tracking
+            updateProgress('Connecting to server...', []);
+
+            try {
+                // Use fetch with streaming for real-time progress
+                const response = await fetch(`${API_URL}/annotate/stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: description,
+                        schema_version: schema,
+                        max_validation_attempts: maxAttempts,
+                        run_assessment: runAssessment
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) {
+                            const eventType = line.substring(6).trim();
+                            continue;
+                        }
+                        if (line.startsWith('data:')) {
+                            const data = JSON.parse(line.substring(5).trim());
+
+                            if (line.includes('"stage"')) {
+                                // Progress event
+                                updateProgress(data.message, getProgressSteps(data.stage));
+                            } else if (line.includes('"annotation"')) {
+                                // Result event
+                                displayResults(data);
+                                document.getElementById('progressStatus').classList.remove('active');
+                                document.getElementById('generateBtn').disabled = false;
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                // If streaming fails, fall back to regular fetch
+                console.log('Streaming failed, using fallback:', error);
+                await generateAnnotationFallback(description, schema, maxAttempts, runAssessment);
+            }
+        }
+
+        async function generateAnnotationFallback(description, schema, maxAttempts, runAssessment) {
+            updateProgress('Generating annotation...', ['annotating']);
 
             try {
                 const response = await fetch(`${API_URL}/annotate`, {
@@ -286,7 +431,8 @@ Example: A red circle appears on the left side of the screen and the participant
                     body: JSON.stringify({
                         description: description,
                         schema_version: schema,
-                        max_validation_attempts: maxAttempts
+                        max_validation_attempts: maxAttempts,
+                        run_assessment: runAssessment
                     })
                 });
 
@@ -299,9 +445,34 @@ Example: A red circle appears on the left side of the screen and the participant
             } catch (error) {
                 displayError(error.message);
             } finally {
-                document.getElementById('loading').classList.remove('active');
+                document.getElementById('progressStatus').classList.remove('active');
                 document.getElementById('generateBtn').disabled = false;
             }
+        }
+
+        function updateProgress(message, steps) {
+            document.getElementById('progressMessage').textContent = message;
+
+            const stepsHtml = steps.map(step =>
+                `<span class="progress-step ${step.status}">${step.name}</span>`
+            ).join('');
+            document.getElementById('progressSteps').innerHTML = stepsHtml;
+        }
+
+        function getProgressSteps(currentStage) {
+            const allSteps = [
+                { name: 'Annotating', stage: 'annotating' },
+                { name: 'Validating', stage: 'validating' },
+                { name: 'Evaluating', stage: 'evaluating' },
+                { name: 'Assessing', stage: 'assessing' }
+            ];
+
+            return allSteps.map(step => ({
+                name: step.name,
+                status: step.stage === currentStage ? 'active' :
+                       (allSteps.findIndex(s => s.stage === step.stage) <
+                        allSteps.findIndex(s => s.stage === currentStage) ? 'completed' : '')
+            }));
         }
 
         function displayResults(data) {
