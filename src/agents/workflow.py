@@ -106,7 +106,8 @@ class HedAnnotationWorkflow:
             self._route_after_evaluation,
             {
                 "annotate": "annotate",  # Refine if not faithful
-                "assess": "assess",  # Proceed to assessment if faithful
+                "assess": "assess",  # Proceed to assessment if needed
+                "end": END,  # Skip assessment if valid and faithful
             },
         )
 
@@ -159,6 +160,12 @@ class HedAnnotationWorkflow:
         print(f"[WORKFLOW] Entering evaluate node")
         result = await self.evaluation_agent.evaluate(state)
         print(f"[WORKFLOW] Evaluation result: is_faithful={result.get('is_faithful')}")
+
+        # Set default assessment values if we'll skip assessment
+        if result.get('is_faithful') and state.get('is_valid'):
+            result['is_complete'] = True
+            result['assessment_feedback'] = "Annotation is valid and faithful to the original description."
+
         return result
 
     async def _assess_node(self, state: HedAnnotationState) -> dict:
@@ -215,8 +222,14 @@ class HedAnnotationWorkflow:
             return "assess"
 
         if state["is_faithful"]:
-            print(f"[WORKFLOW] Routing to assess (annotation is faithful)")
-            return "assess"
+            # Skip assessment if annotation is valid and faithful
+            # Set default completeness feedback
+            if state.get("is_valid"):
+                print(f"[WORKFLOW] Skipping assessment (annotation is valid and faithful) - routing to END")
+                return "end"
+            else:
+                print(f"[WORKFLOW] Routing to assess (annotation is faithful but has validation issues)")
+                return "assess"
         else:
             print(f"[WORKFLOW] Routing to annotate (annotation needs refinement, iteration {total_iters}/{max_iters})")
             return "annotate"

@@ -37,50 +37,12 @@ class AssessmentAgent:
         """
         return """You are a HED annotation assessment specialist.
 
-Your task is to provide a final comprehensive assessment comparing the generated HED annotation
-against the original event description, identifying any still-missing elements or dimensions.
+Compare the HED annotation against the original description and provide brief feedback.
 
-## Assessment Focus
-
-### 1. Completeness Check
-- Are all explicitly mentioned elements captured?
-- Are all implicit but important aspects included?
-- Is contextual information preserved?
-
-### 2. Dimensional Analysis
-Check if these dimensions are captured where relevant:
-- Sensory modalities (visual, auditory, tactile, etc.)
-- Spatial information (location, position, direction)
-- Temporal information (duration, timing, sequence)
-- Object properties (color, shape, size, texture)
-- Agent information (who, role)
-- Action information (what action, how)
-- Relationships (spatial, temporal, causal)
-
-### 3. Annotator Guidance
-- What was captured well?
-- What might still be missing?
-- What optional details could enhance the annotation?
-
-## Response Format
-
-Provide assessment in this structure:
-
-COMPLETENESS: [complete/mostly-complete/incomplete]
-
-CAPTURED ELEMENTS:
-- [Elements successfully captured]
-
-MISSING ELEMENTS:
-- [Elements not captured]
-
-OPTIONAL ENHANCEMENTS:
-- [Additional details that could be added]
-
-ANNOTATOR NOTES:
-- [Guidance for annotators]
-
-FINAL STATUS: [COMPLETE/NEEDS-REVIEW]
+Response format:
+COMPLETENESS: [complete/incomplete]
+NOTES: [Brief note on what's captured or missing, 1-2 sentences]
+STATUS: [COMPLETE/NEEDS-REVIEW]
 """
 
     def _build_user_prompt(self, description: str, annotation: str) -> str:
@@ -93,15 +55,12 @@ FINAL STATUS: [COMPLETE/NEEDS-REVIEW]
         Returns:
             User prompt string
         """
-        return f"""Provide final assessment for this annotation:
+        return f"""Assess this annotation:
 
-ORIGINAL DESCRIPTION:
-{description}
+DESCRIPTION: {description}
+ANNOTATION: {annotation}
 
-FINAL HED ANNOTATION:
-{annotation}
-
-Provide a comprehensive assessment following the specified format."""
+Provide brief assessment in the specified format."""
 
     async def assess(self, state: HedAnnotationState) -> dict:
         """Perform final assessment of the annotation.

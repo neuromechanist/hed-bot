@@ -170,7 +170,7 @@ class HedJavaScriptValidator:
         """
         # Create validation script
         script = f"""
-        const {{ parseHedString, buildSchemasFromVersion }} = require('{self.validator_path}/dist/validator.cjs');
+        const {{ parseHedString, buildSchemasFromVersion }} = require('{self.validator_path}/dist/commonjs/index.js');
 
         async function validate() {{
             try {{
