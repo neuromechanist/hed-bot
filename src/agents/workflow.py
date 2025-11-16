@@ -226,6 +226,7 @@ class HedAnnotationWorkflow:
         input_description: str,
         schema_version: str = "8.3.0",
         max_validation_attempts: int = 5,
+        max_total_iterations: int = 10,
         config: dict | None = None,
     ) -> HedAnnotationState:
         """Run the complete annotation workflow.
@@ -234,6 +235,7 @@ class HedAnnotationWorkflow:
             input_description: Natural language event description
             schema_version: HED schema version to use
             max_validation_attempts: Maximum validation retry attempts
+            max_total_iterations: Maximum total iterations to prevent infinite loops
             config: Optional LangGraph config (e.g., recursion_limit)
 
         Returns:
@@ -246,6 +248,7 @@ class HedAnnotationWorkflow:
             input_description,
             schema_version,
             max_validation_attempts,
+            max_total_iterations,
         )
 
         # Run workflow
