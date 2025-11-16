@@ -5,12 +5,12 @@ compatibility_date = "2024-01-01"
 # KV Namespaces for caching
 [[kv_namespaces]]
 binding = "HED_CACHE"
-id = "YOUR_KV_NAMESPACE_ID"  # Will be created during deployment
+id = "18f0bc588a2a4e24bd1d98b51340bd5a"
 
 # KV Namespace for rate limiting
 [[kv_namespaces]]
 binding = "RATE_LIMITER"
-id = "YOUR_RATE_LIMIT_KV_ID"  # Will be created during deployment
+id = "8deb8c02177349afb1d1fe2f7d4079f4"
 
 # Environment variables (secrets set via wrangler secret put)
 # Run: wrangler secret put OPENROUTER_API_KEY

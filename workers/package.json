@@ -8,10 +8,16 @@
     "dev": "wrangler dev",
     "tail": "wrangler tail"
   },
-  "keywords": ["hed", "annotation", "cloudflare", "workers", "serverless"],
+  "keywords": [
+    "hed",
+    "annotation",
+    "cloudflare",
+    "workers",
+    "serverless"
+  ],
   "author": "neuromechanist",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.47.0"
   }
 }
