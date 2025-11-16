@@ -7,19 +7,38 @@ for use in agent system prompts.
 HED_SYNTAX_RULES = """
 ## HED Syntax Rules
 
-### 1. Tag Form (CRITICAL)
-- **Always use SHORT-FORM tags** (leaf node names only)
-- Correct: `Square`, `Red`, `Visual-presentation`
-- Wrong: `Item/Object/Geometric-object/2D-shape/Rectangle/Square`
-- Use the most specific (deepest/leaf) tag that applies
+### 1. Tag Form (CRITICAL - READ CAREFULLY)
+- **Use ONLY the tag name from the vocabulary** - NO parent paths!
+- Tags in the schema are ALREADY in short-form
+- **CORRECT examples**: `Red`, `Circle`, `Press`, `To-left-of`, `Square`
+- **WRONG examples**: `Property/Red`, `Item/Circle`, `Action/Press`, `Relation/To-left-of`
+- **Why wrong?**: Red, Circle, Press, and To-left-of are already complete tags in the schema
+- The schema internally knows Red is a property and Circle is an item - you don't specify this
 
-### 2. Tag Extension
-- Some tags allow extension using `/` notation
-- Example: `Action/Reach` extends `Action` (if Action is extensionAllowed)
-- Example: `Label/MyCustomLabel` for user-specific labels
-- **WARNING**: Extended tags are dataset-specific and non-portable
-- Only extend when no existing tag fits
-- Extension format: `BaseTag/ExtensionValue`
+**CRITICAL RULE**: If a tag name appears in your vocabulary list, use it EXACTLY as shown:
+- Vocabulary contains `Red` → Use `Red` (NOT `Property/Red`, NOT `Color/Red`)
+- Vocabulary contains `Circle` → Use `Circle` (NOT `Item/Circle`, NOT `Ellipse/Circle`)
+- Vocabulary contains `Press` → Use `Press` (NOT `Action/Press`)
+- Vocabulary contains `To-left-of` → Use `To-left-of` (NOT `Relation/To-left-of`)
+
+### 2. When to Use Slash (/) - ONLY These Cases
+**Use `/` ONLY for these three purposes:**
+
+**A) Extending a tag to create a NEW tag not in the schema**
+- Example: `Action/Grasp` (if "Grasp" is not in vocabulary, but "Action" allows extension)
+- Example: `Label/MyCustomLabel` (adding your own label)
+- Format: `ExtendableTag/YourNewTerm`
+
+**B) Structured values with units**
+- Example: `Duration/2 s`, `Frequency/440 Hz`, `Age/25 years`
+- Format: `Tag/# units`
+
+**C) Definitions**
+- Example: `Definition/Red-circle`, `Def/Red-circle`
+
+**DO NOT use `/` with existing vocabulary tags!**
+- If "Red" is in vocabulary → Use `Red` (NOT `Property/Red`)
+- If "Circle" is in vocabulary → Use `Circle` (NOT `Item/Circle`)
 
 ### 3. Grouping with Parentheses
 - Group properties of the SAME object: `(Red, Circle)`
@@ -176,13 +195,37 @@ Agent-action, ((Human-agent), (Reach, (Towards, (Target-object, (Red, Sphere))))
 HED_VALIDATION_GUIDANCE = """
 ## Validation Error Guidance
 
-### Common Errors and Fixes
+### MOST COMMON MISTAKE: Adding Parent Paths to Existing Tags
+
+**Error: TAG_EXTENSION_INVALID - "Red" does not have "Property" as its parent**
+- **What you did WRONG**: `Property/Red`
+- **Why it's wrong**: "Red" is already in the schema - use it AS-IS
+- **FIX**: Use `Red` (just the tag name from vocabulary)
+
+**Error: TAG_EXTENSION_INVALID - "Circle" does not have "Item" as its parent**
+- **What you did WRONG**: `Item/Circle`
+- **Why it's wrong**: "Circle" is already in the schema - use it AS-IS
+- **FIX**: Use `Circle` (just the tag name from vocabulary)
+
+**Error: TAG_EXTENSION_INVALID - "To-left-of" does not have "Relation" as its parent**
+- **What you did WRONG**: `Relation/To-left-of`
+- **Why it's wrong**: "To-left-of" is already in the schema - use it AS-IS
+- **FIX**: Use `To-left-of` (just the tag name from vocabulary)
+
+**Error: TAG_EXTENSION_INVALID - "Press" does not have "Action" as its parent**
+- **What you did WRONG**: `Action/Press`
+- **Why it's wrong**: "Press" is already in the schema - use it AS-IS
+- **FIX**: Use `Press` (just the tag name from vocabulary)
+
+**REMEMBER**: The `/` is for EXTENSION (creating new tags), not for showing hierarchy!
+
+### Other Common Errors
 
 **Error: TAG_INVALID**
 - Tag not in vocabulary
 - Fix: Use short-form tag from schema
 - Or: Check for typos in tag name
-- Or: If intentional, extend valid base tag
+- Or: If intentional, extend valid base tag (e.g., `Action/NewAction` if "NewAction" isn't in schema)
 
 **Error: PARENTHESES_MISMATCH**
 - Unbalanced parentheses
@@ -251,12 +294,22 @@ Your task: Convert natural language event descriptions into valid, semantically 
 
 ## Critical Reminders
 
-1. **Use SHORT-FORM tags only** (not full paths)
+1. **NEVER add parent paths to vocabulary tags!**
+   - Use `Red` NOT `Property/Red` or `Color/Red`
+   - Use `Circle` NOT `Item/Circle` or `Ellipse/Circle`
+   - Use `Press` NOT `Action/Press`
+   - Use `To-left-of` NOT `Relation/To-left-of` or `Spatial-relation/To-left-of`
+   - Only use `/` for extending (creating new tags), values with units, or definitions
+
 2. **Group object properties**: `(Red, Circle)` not `Red, Circle`
+
 3. **Every event needs**: Event tag + Task-event-role tag
+
 4. **Sensory-event needs**: Sensory-modality (Visual-presentation, etc.)
+
 5. **Test reversibility**: Can translate back to English?
-6. **Extend conservatively**: Only when no schema tag fits
+
+6. **Extend conservatively**: Only when no schema tag fits AND tag allows extension
 
 ## Response Format
 

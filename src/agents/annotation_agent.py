@@ -10,7 +10,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import HedAnnotationState
-from src.utils.hed_rules import get_complete_system_prompt
+from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
 from src.utils.json_schema_loader import HedJsonSchemaLoader, load_latest_schema
 
 
@@ -63,7 +63,7 @@ class AnnotationAgent:
         Returns:
             Complete system prompt with all HED rules
         """
-        return get_complete_system_prompt(vocabulary, extendable_tags)
+        return get_comprehensive_hed_guide(vocabulary, extendable_tags)
 
     def _build_user_prompt(
         self,
