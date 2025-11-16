@@ -63,16 +63,25 @@
         .logo-container {
             width: 120px;
             height: auto;
-            background: white;
             padding: 8px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(96, 165, 250, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .logo-container:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(96, 165, 250, 0.5);
+            transform: scale(1.05);
         }
 
         .logo-container img {
             width: 100%;
             height: auto;
             display: block;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
 
         .content {
