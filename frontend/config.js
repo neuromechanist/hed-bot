@@ -1,3 +1,3 @@
 // Backend API Configuration
-// Cloudflare Workers serverless backend
-window.BACKEND_URL = 'https://hed-bot-api.shirazi-10f.workers.dev';
+// Direct connection to Python FastAPI backend via Tailscale Funnel
+window.BACKEND_URL = 'https://jamming.tail75926.ts.net';

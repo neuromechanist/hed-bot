@@ -13,9 +13,10 @@ binding = "RATE_LIMITER"
 id = "8deb8c02177349afb1d1fe2f7d4079f4"
 
 # Environment variables (secrets set via wrangler secret put)
-# Run: wrangler secret put OPENROUTER_API_KEY
+# Run: wrangler secret put BACKEND_URL
 [vars]
 ENVIRONMENT = "production"
+# BACKEND_URL will be set as a secret (contains tunnel URL)
 
 # Routes (optional - if you want custom domain)
 # routes = [
