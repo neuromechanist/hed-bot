@@ -291,7 +291,7 @@
         .badge-container {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             margin: 5px 8px 5px 0;
         }
 
@@ -299,21 +299,46 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            color: white;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
+            font-style: normal;
             cursor: help;
             position: relative;
             transition: all 0.3s ease;
+            border: 2px solid;
         }
 
         .info-icon:hover {
-            background: linear-gradient(135deg, #3730a3 0%, #1e40af 100%);
-            transform: scale(1.15);
+            transform: scale(1.1);
+            opacity: 0.85;
+        }
+
+        /* Info icon variants matching badge colors */
+        .info-icon.valid {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+            border-color: #10b981;
+        }
+
+        .info-icon.invalid {
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+            color: #991b1b;
+            border-color: #ef4444;
+        }
+
+        .info-icon.faithful {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e40af;
+            border-color: #3b82f6;
+        }
+
+        .info-icon.complete {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border-color: #f59e0b;
         }
 
         .tooltip {
@@ -698,8 +723,8 @@ Example: A red circle appears on the left side of the screen and the participant
                     <span class="status-badge ${data.is_valid ? 'status-valid' : 'status-invalid'}">
                         ${data.is_valid ? 'Valid' : 'Invalid'}
                     </span>
-                    <span class="info-icon" role="img" aria-label="Valid badge information">
-                        <span style="font-style: normal;">ℹ️</span>
+                    <span class="info-icon ${data.is_valid ? 'valid' : 'invalid'}" role="img" aria-label="Valid badge information">
+                        i
                         <span class="tooltip">HED validator returned no errors in the final annotation string</span>
                     </span>
                 </div>
@@ -709,8 +734,8 @@ Example: A red circle appears on the left side of the screen and the participant
                     <span class="status-badge ${data.is_faithful ? 'status-faithful' : 'status-invalid'}">
                         ${data.is_faithful ? 'Faithful' : 'Needs Refinement'}
                     </span>
-                    <span class="info-icon" role="img" aria-label="Faithful badge information">
-                        <span style="font-style: normal;">ℹ️</span>
+                    <span class="info-icon ${data.is_faithful ? 'faithful' : 'invalid'}" role="img" aria-label="Faithful badge information">
+                        i
                         <span class="tooltip">Annotation accurately represents the original description without adding unrelated information</span>
                     </span>
                 </div>
@@ -720,8 +745,8 @@ Example: A red circle appears on the left side of the screen and the participant
                     <span class="status-badge ${data.is_complete ? 'status-complete' : 'status-invalid'}">
                         ${data.is_complete ? 'Complete' : 'Incomplete'}
                     </span>
-                    <span class="info-icon" role="img" aria-label="Complete badge information">
-                        <span style="font-style: normal;">ℹ️</span>
+                    <span class="info-icon ${data.is_complete ? 'complete' : 'invalid'}" role="img" aria-label="Complete badge information">
+                        i
                         <span class="tooltip">All relevant dimensions and elements from the description are captured in the annotation</span>
                     </span>
                 </div>
