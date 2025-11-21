@@ -32,6 +32,8 @@ export default {
       // Route requests
       if (url.pathname === '/health') {
         return await handleHealth(request, env, corsHeaders);
+      } else if (url.pathname === '/version') {
+        return await handleVersion(request, env, corsHeaders);
       } else if (url.pathname === '/annotate' && request.method === 'POST') {
         return await handleAnnotate(request, env, ctx, corsHeaders);
       } else if (url.pathname === '/validate' && request.method === 'POST') {
@@ -67,6 +69,49 @@ function handleRoot(corsHeaders) {
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Version endpoint (proxies to backend to get actual version)
+ */
+async function handleVersion(request, env, corsHeaders) {
+  const backendUrl = env.BACKEND_URL;
+
+  if (!backendUrl) {
+    return new Response(JSON.stringify({
+      version: 'unknown',
+      error: 'Backend not configured',
+    }), {
+      status: 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  try {
+    // Get version from backend
+    const response = await fetch(`${backendUrl}/version`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}`);
+    }
+
+    const version = await response.json();
+
+    return new Response(JSON.stringify(version), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({
+      version: 'unknown',
+      error: error.message,
+    }), {
+      status: 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 }
 
 /**
