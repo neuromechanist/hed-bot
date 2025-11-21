@@ -29,6 +29,7 @@ class VersionBumper:
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.version_file = project_root / "src" / "version.py"
+        self.pyproject_file = project_root / "pyproject.toml"
 
     def get_current_version(self) -> tuple[int, int, int, str]:
         """Read the current version from version.py."""
@@ -113,6 +114,25 @@ def get_version_info() -> tuple:
 
         self.version_file.write_text(content)
         print(f"✓ Updated {self.version_file.relative_to(self.project_root)}")
+
+        # Also update pyproject.toml
+        self._update_pyproject_toml(version_str)
+
+    def _update_pyproject_toml(self, version: str):
+        """Update version in pyproject.toml."""
+        import re
+
+        content = self.pyproject_file.read_text()
+
+        # Update version line in [project] section
+        updated_content = re.sub(
+            r'(version\s*=\s*)"[^"]+"',
+            f'\\1"{version}"',
+            content
+        )
+
+        self.pyproject_file.write_text(updated_content)
+        print(f"✓ Updated {self.pyproject_file.relative_to(self.project_root)}")
 
     def git_commit_and_tag(self, version: str):
         """Commit version bump and create Git tag."""
