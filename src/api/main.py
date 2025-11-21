@@ -22,19 +22,23 @@ from langchain_core.language_models import BaseChatModel
 
 from src import __version__
 from src.agents.workflow import HedAnnotationWorkflow
+from src.agents.vision_agent import VisionAgent
 from src.utils.openrouter_llm import create_openrouter_llm, get_model_name
 from src.api.models import (
     AnnotationRequest,
     AnnotationResponse,
     HealthResponse,
+    ImageAnnotationRequest,
+    ImageAnnotationResponse,
     ValidationRequest,
     ValidationResponse,
 )
 from src.utils.schema_loader import HedSchemaLoader
 from src.validation.hed_validator import HedPythonValidator
 
-# Global workflow instance
+# Global workflow and vision agent instances
 workflow: HedAnnotationWorkflow | None = None
+vision_agent: VisionAgent | None = None
 schema_loader: HedSchemaLoader | None = None
 
 
@@ -45,7 +49,7 @@ async def lifespan(app: FastAPI):
     Args:
         app: FastAPI application
     """
-    global workflow, schema_loader
+    global workflow, vision_agent, schema_loader
 
     # Startup: Initialize workflow
     print("Initializing HED-BOT annotation workflow...")
@@ -184,6 +188,25 @@ async def lifespan(app: FastAPI):
     print(f"  LLM Provider: {llm_provider} (temperature={llm_temperature})")
     print(f"  JavaScript validator: {use_js_validator}")
 
+    # Initialize vision agent (only for OpenRouter)
+    if llm_provider == "openrouter":
+        vision_model = os.getenv("VISION_MODEL", "qwen/qwen3-vl-30b-a3b-instruct")
+        vision_provider = os.getenv("VISION_PROVIDER", "deepinfra/fp8")
+
+        print(f"Initializing vision model: {vision_model} (provider: {vision_provider})")
+
+        vision_llm = create_openrouter_llm(
+            model=vision_model,
+            api_key=openrouter_api_key,
+            temperature=0.3,  # Slightly higher temperature for more descriptive text
+            provider=vision_provider,
+        )
+
+        vision_agent = VisionAgent(llm=vision_llm)
+        print("Vision agent initialized successfully!")
+    else:
+        print("Vision model not available (only supported with OpenRouter)")
+
     yield
 
     # Shutdown
@@ -280,6 +303,78 @@ async def annotate(request: AnnotationRequest) -> AnnotationResponse:
         raise HTTPException(
             status_code=500,
             detail=f"Annotation workflow failed: {str(e)}",
+        ) from e
+
+
+@app.post("/annotate-from-image", response_model=ImageAnnotationResponse)
+async def annotate_from_image(request: ImageAnnotationRequest) -> ImageAnnotationResponse:
+    """Generate HED annotation from an image.
+
+    This endpoint uses a vision-language model to generate a description of the image,
+    then passes that description through the standard HED annotation workflow.
+
+    Args:
+        request: Image annotation request with base64 image and parameters
+
+    Returns:
+        Generated annotation with image description and validation feedback
+
+    Raises:
+        HTTPException: If workflow or vision agent fails
+    """
+    if workflow is None:
+        raise HTTPException(status_code=503, detail="Workflow not initialized")
+
+    if vision_agent is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Vision model not available. Please use OpenRouter provider."
+        )
+
+    try:
+        # Step 1: Generate image description using vision model
+        vision_result = await vision_agent.describe_image(
+            image_data=request.image,
+            custom_prompt=request.prompt,
+        )
+
+        image_description = vision_result["description"]
+        image_metadata = vision_result["metadata"]
+
+        # Step 2: Pass description through HED annotation workflow
+        config = {"recursion_limit": 100}
+
+        final_state = await workflow.run(
+            input_description=image_description,
+            schema_version=request.schema_version,
+            max_validation_attempts=request.max_validation_attempts,
+            run_assessment=request.run_assessment,
+            config=config,
+        )
+
+        # Determine overall status
+        is_valid = final_state["is_valid"] and len(final_state["validation_errors"]) == 0
+        status = "success" if is_valid else "failed"
+
+        return ImageAnnotationResponse(
+            image_description=image_description,
+            annotation=final_state["current_annotation"],
+            is_valid=is_valid,
+            is_faithful=final_state["is_faithful"],
+            is_complete=final_state["is_complete"],
+            validation_attempts=final_state["validation_attempts"],
+            validation_errors=final_state["validation_errors"],
+            validation_warnings=final_state["validation_warnings"],
+            evaluation_feedback=final_state["evaluation_feedback"],
+            assessment_feedback=final_state["assessment_feedback"],
+            status=status,
+            image_metadata=image_metadata,
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Image annotation workflow failed: {str(e)}",
         ) from e
 
 
@@ -443,6 +538,8 @@ async def root():
         "description": "Multi-agent system for HED annotation generation",
         "endpoints": {
             "POST /annotate": "Generate HED annotation from description",
+            "POST /annotate-from-image": "Generate HED annotation from image",
+            "POST /annotate/stream": "Generate HED annotation with streaming",
             "POST /validate": "Validate HED annotation string",
             "GET /health": "Health check",
             "GET /version": "Get version information",
