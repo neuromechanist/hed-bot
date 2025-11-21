@@ -184,21 +184,53 @@ class HedJavaScriptValidator:
                     true    // full validation
                 );
 
-                const result = {{
-                    isValid: errors.length === 0,
-                    parsed: parsed ? parsed.toString() : null,
-                    errors: errors.map(e => ({{
+                // Reclassify warnings that should actually be errors
+                // Based on HED validator source: these indicate invalid/malformed HED
+                const errorCodes = [
+                    'TAG_INVALID',                    // Invalid tag - doesn't exist in schema
+                    'TAG_NAMESPACE_PREFIX_INVALID',   // Invalid tag prefix
+                    'TAG_NOT_UNIQUE',                 // Multiple unique tags
+                    'TAG_REQUIRES_CHILD',             // Child/value required
+                    'TAG_EXTENSION_INVALID',          // Invalid extension
+                    'TAG_EMPTY',                      // Empty tag
+                    'UNITS_INVALID',                  // Invalid units
+                    'VALUE_INVALID',                  // Invalid value
+                ];
+                const actualErrors = [];
+                const actualWarnings = [];
+
+                // Process errors
+                errors.forEach(e => {{
+                    actualErrors.push({{
                         code: e.hedCode || e.internalCode,
                         message: e.message,
                         tag: e.parameters?.tag,
                         level: 'error'
-                    }})),
-                    warnings: warnings.map(w => ({{
-                        code: w.hedCode || w.internalCode,
+                    }});
+                }});
+
+                // Process warnings - promote critical ones to errors
+                warnings.forEach(w => {{
+                    const code = w.hedCode || w.internalCode;
+                    const issue = {{
+                        code: code,
                         message: w.message,
                         tag: w.parameters?.tag,
-                        level: 'warning'
-                    }}))
+                        level: errorCodes.includes(code) ? 'error' : 'warning'
+                    }};
+
+                    if (errorCodes.includes(code)) {{
+                        actualErrors.push(issue);
+                    }} else {{
+                        actualWarnings.push(issue);
+                    }}
+                }});
+
+                const result = {{
+                    isValid: actualErrors.length === 0,
+                    parsed: parsed ? parsed.toString() : null,
+                    errors: actualErrors,
+                    warnings: actualWarnings
                 }};
 
                 console.log(JSON.stringify(result));
