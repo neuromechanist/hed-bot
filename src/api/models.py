@@ -99,6 +99,76 @@ class ValidationResponse(BaseModel):
     parsed_string: str | None = Field(default=None)
 
 
+class ImageAnnotationRequest(BaseModel):
+    """Request model for image-based HED annotation generation.
+
+    Attributes:
+        image: Base64 encoded image or data URI
+        prompt: Optional custom prompt for vision model (uses default if not provided)
+        schema_version: HED schema version to use
+        max_validation_attempts: Maximum validation retry attempts
+        run_assessment: Whether to run final assessment (adds extra time)
+    """
+
+    image: str = Field(
+        ...,
+        description="Base64 encoded image or data URI (data:image/png;base64,...)",
+        min_length=1,
+    )
+    prompt: str | None = Field(
+        default=None,
+        description="Optional custom prompt for vision model",
+        examples=["Describe the visual elements in this image"],
+    )
+    schema_version: str = Field(
+        default="8.4.0",
+        description="HED schema version",
+        examples=["8.3.0", "8.4.0"],
+    )
+    max_validation_attempts: int = Field(
+        default=5,
+        description="Maximum validation retry attempts",
+        ge=1,
+        le=10,
+    )
+    run_assessment: bool = Field(
+        default=False,
+        description="Run final assessment for completeness (adds extra processing time)",
+    )
+
+
+class ImageAnnotationResponse(BaseModel):
+    """Response model for image-based HED annotation generation.
+
+    Attributes:
+        image_description: Generated description from vision model
+        annotation: Generated HED annotation string
+        is_valid: Whether the annotation passed validation
+        is_faithful: Whether the annotation is faithful to description
+        is_complete: Whether the annotation is complete
+        validation_attempts: Number of validation attempts made
+        validation_errors: List of validation errors (if any)
+        validation_warnings: List of validation warnings (if any)
+        evaluation_feedback: Evaluation agent feedback
+        assessment_feedback: Assessment agent feedback
+        status: Overall workflow status
+        image_metadata: Metadata about the processed image
+    """
+
+    image_description: str = Field(..., description="Generated image description")
+    annotation: str = Field(..., description="Generated HED annotation string")
+    is_valid: bool = Field(..., description="Validation status")
+    is_faithful: bool = Field(..., description="Faithfulness to description")
+    is_complete: bool = Field(..., description="Completeness status")
+    validation_attempts: int = Field(..., description="Number of validation attempts")
+    validation_errors: list[str] = Field(default_factory=list)
+    validation_warnings: list[str] = Field(default_factory=list)
+    evaluation_feedback: str = Field(default="")
+    assessment_feedback: str = Field(default="")
+    status: str = Field(..., description="Workflow status", examples=["success", "failed"])
+    image_metadata: dict = Field(default_factory=dict, description="Image metadata")
+
+
 class HealthResponse(BaseModel):
     """Response model for health check.
 
