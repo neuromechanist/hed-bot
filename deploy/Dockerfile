@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy the application code
 COPY src /app/src
-COPY frontend /app/frontend
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
