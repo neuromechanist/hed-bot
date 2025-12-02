@@ -17,6 +17,16 @@ Multi-agent system for converting natural language event descriptions into valid
 - **Scalable**: Designed for 10-15 concurrent users
 - **Auto-Configuration**: Model automatically pulled on first Docker start
 
+## Documentation
+
+📚 **[Full Documentation](docs/)** - Comprehensive guides for users, deployers, and developers
+
+**Quick Links**:
+- [Usage Guide](docs/guides/usage.md) - Getting started with HED-BOT
+- [Deployment Guide](docs/deployment/) - Deploy HED-BOT on your infrastructure
+- [API Reference](docs/api/) - API documentation
+- [Development Guide](docs/development/) - Contribute to HED-BOT
+
 ## Architecture
 
 ```mermaid
