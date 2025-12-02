@@ -14,11 +14,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_community.chat_models import ChatOllama
 from langchain_core.language_models import BaseChatModel
+import time
 
 from src import __version__
 from src.agents.workflow import HedAnnotationWorkflow
@@ -33,6 +34,7 @@ from src.api.models import (
     ValidationRequest,
     ValidationResponse,
 )
+from src.api.security import api_key_auth, audit_logger
 from src.utils.schema_loader import HedSchemaLoader
 from src.validation.hed_validator import HedPythonValidator
 
@@ -239,9 +241,41 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-API-Key"],
     max_age=3600,  # Cache preflight requests for 1 hour
 )
+
+
+# Audit logging middleware
+@app.middleware("http")
+async def audit_logging_middleware(request: Request, call_next):
+    """Middleware to log all requests and responses for audit trail."""
+    start_time = time.time()
+
+    # Log incoming request
+    api_key = request.headers.get("x-api-key")
+    api_key_hash = api_key[:8] + "..." if api_key else None
+    audit_logger.log_request(request, api_key_hash=api_key_hash)
+
+    # Process request
+    try:
+        response = await call_next(request)
+        processing_time_ms = (time.time() - start_time) * 1000
+
+        # Log response
+        audit_logger.log_response(request, response.status_code, processing_time_ms)
+
+        # Add security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        return response
+    except Exception as e:
+        # Log error
+        audit_logger.log_error(request, e, api_key_hash=api_key_hash)
+        raise
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -265,17 +299,23 @@ async def health_check() -> HealthResponse:
 
 
 @app.post("/annotate", response_model=AnnotationResponse)
-async def annotate(request: AnnotationRequest) -> AnnotationResponse:
+async def annotate(
+    request: AnnotationRequest,
+    api_key: str = Depends(api_key_auth)
+) -> AnnotationResponse:
     """Generate HED annotation from natural language description.
+
+    Requires API key authentication via X-API-Key header.
 
     Args:
         request: Annotation request with description and parameters
+        api_key: API key for authentication (injected by dependency)
 
     Returns:
         Generated annotation with validation and assessment feedback
 
     Raises:
-        HTTPException: If workflow fails
+        HTTPException: If workflow fails or authentication fails
     """
     if workflow is None:
         raise HTTPException(status_code=503, detail="Workflow not initialized")
@@ -320,20 +360,26 @@ async def annotate(request: AnnotationRequest) -> AnnotationResponse:
 
 
 @app.post("/annotate-from-image", response_model=ImageAnnotationResponse)
-async def annotate_from_image(request: ImageAnnotationRequest) -> ImageAnnotationResponse:
+async def annotate_from_image(
+    request: ImageAnnotationRequest,
+    api_key: str = Depends(api_key_auth)
+) -> ImageAnnotationResponse:
     """Generate HED annotation from an image.
+
+    Requires API key authentication via X-API-Key header.
 
     This endpoint uses a vision-language model to generate a description of the image,
     then passes that description through the standard HED annotation workflow.
 
     Args:
         request: Image annotation request with base64 image and parameters
+        api_key: API key for authentication (injected by dependency)
 
     Returns:
         Generated annotation with image description and validation feedback
 
     Raises:
-        HTTPException: If workflow or vision agent fails
+        HTTPException: If workflow or vision agent fails or authentication fails
     """
     if workflow is None:
         raise HTTPException(status_code=503, detail="Workflow not initialized")
@@ -489,17 +535,23 @@ async def annotate_stream(request: AnnotationRequest):
 
 
 @app.post("/validate", response_model=ValidationResponse)
-async def validate(request: ValidationRequest) -> ValidationResponse:
+async def validate(
+    request: ValidationRequest,
+    api_key: str = Depends(api_key_auth)
+) -> ValidationResponse:
     """Validate a HED annotation string.
+
+    Requires API key authentication via X-API-Key header.
 
     Args:
         request: Validation request with HED string
+        api_key: API key for authentication (injected by dependency)
 
     Returns:
         Validation result with errors and warnings
 
     Raises:
-        HTTPException: If validation fails
+        HTTPException: If validation fails or authentication fails
     """
     if schema_loader is None:
         raise HTTPException(status_code=503, detail="Schema loader not initialized")
