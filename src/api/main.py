@@ -221,13 +221,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configure CORS for production
+# Allow requests from official frontend and local development
+allowed_origins = [
+    "https://hed-bot.pages.dev",           # Production frontend
+    "http://localhost:5173",               # Local development
+    "http://localhost:3000",               # Alternative local dev
+]
+
+# Add environment-specific origins if configured
+if extra_origins := os.getenv("EXTRA_CORS_ORIGINS"):
+    allowed_origins.extend(extra_origins.split(","))
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 
