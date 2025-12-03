@@ -21,7 +21,7 @@ This directory contains deployment scripts and configuration for running HED-BOT
 
 - Docker installed on server
 - Git access to repository
-- Port 33427 available (prod) or 33428 (dev)
+- Port 38427 available
 
 ### Deploy Production
 
@@ -227,10 +227,10 @@ LOCK_FILE="/tmp/hed-bot-update.lock"
 #### Examples
 
 ```bash
-# Production deployment (127.0.0.1:33427)
+# Production deployment (127.0.0.1:38427)
 ./deploy.sh prod
 
-# Development deployment (127.0.0.1:33428)
+# Development deployment (127.0.0.1:38428)
 ./deploy.sh dev
 
 # Bind to all interfaces (not recommended for production)
@@ -242,7 +242,7 @@ LOCK_FILE="/tmp/hed-bot-update.lock"
 1. Builds Docker image from `deploy/Dockerfile`
 2. Stops existing container (if running)
 3. Starts new container with:
-   - Port mapping (host:33427 → container:38427)
+   - Port mapping (host:38427 → container:38427)
    - Environment variables from `.env`
    - Auto-restart policy
    - Health checks enabled
@@ -269,21 +269,17 @@ AUDIT_LOG_FILE=/var/log/hed-bot/audit.log
 # CORS Configuration (optional extra origins)
 # EXTRA_CORS_ORIGINS=https://staging.hed-bot.pages.dev,https://dev.hed-bot.pages.dev
 
-# LLM Configuration
+# LLM Configuration (Cerebras + OpenRouter for ultra-fast inference)
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_openrouter_key_here
-
-# Optional: Per-agent model configuration
-ANNOTATION_MODEL=gpt-5-mini
-EVALUATION_MODEL=gpt-5-mini
-ASSESSMENT_MODEL=gpt-5-mini
-FEEDBACK_MODEL=gpt-5-nano
-
-# Optional: Provider preference for ultra-fast inference
 LLM_PROVIDER_PREFERENCE=Cerebras
-
-# Optional: Temperature setting
 LLM_TEMPERATURE=0.1
+
+# Model configuration (Cerebras-optimized defaults)
+ANNOTATION_MODEL=openai/gpt-oss-120b
+EVALUATION_MODEL=qwen/qwen3-235b-a22b-2507
+ASSESSMENT_MODEL=openai/gpt-oss-120b
+FEEDBACK_MODEL=openai/gpt-oss-120b
 
 # Optional: HED Schema and Validator paths (if not using defaults)
 # HED_SCHEMA_DIR=/path/to/hed-schemas
@@ -295,31 +291,35 @@ LLM_TEMPERATURE=0.1
 
 ### Reverse Proxy Configuration
 
-Add to your Nginx configuration:
+#### Apache (hedtools.ucsd.edu)
+
+Add to your Apache virtual host configuration:
+
+```apache
+# HED-BOT Backend
+ProxyPass /hed-bot/ http://localhost:38427/
+ProxyPassReverse /hed-bot/ http://localhost:38427/
+```
+
+Reload Apache:
+```bash
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+```
+
+#### Nginx (Alternative)
 
 ```nginx
-# HED-BOT Backend
-location /hed-bot {
-    proxy_pass http://127.0.0.1:33427;
+location /hed-bot/ {
+    proxy_pass http://127.0.0.1:38427/;
     proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_cache_bypass $http_upgrade;
-
-    # Timeout settings for long-running requests
-    proxy_connect_timeout 60s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
-}
-
-# Health check endpoint
-location /hed-bot/health {
-    proxy_pass http://127.0.0.1:33427/health;
-    access_log off;
+    proxy_connect_timeout 120s;
+    proxy_send_timeout 120s;
+    proxy_read_timeout 120s;
 }
 ```
 
@@ -366,7 +366,7 @@ tail -f /var/log/hed-bot-update.log
 
 ```bash
 # Manual health check
-curl http://localhost:33427/health
+curl http://localhost:38427/health
 
 # Through reverse proxy
 curl https://your-domain.com/hed-bot/health
@@ -376,7 +376,7 @@ Expected response:
 ```json
 {
   "status": "healthy",
-  "version": "0.4.1-alpha",
+  "version": "0.4.2-alpha",
   "llm_available": true,
   "validator_available": true
 }
@@ -396,7 +396,7 @@ docker logs hed-bot
 **Common issues:**
 - Missing `.env` file → Copy from `.env.example`
 - Invalid API key → Check OPENROUTER_API_KEY
-- Port already in use → `sudo lsof -i :33427`
+- Port already in use → `sudo lsof -i :38427`
 
 ### Auto-Update Not Working
 
@@ -429,7 +429,7 @@ docker inspect --format='{{.State.Health}}' hed-bot
 
 **Check network:**
 ```bash
-curl http://127.0.0.1:33427/health
+curl http://127.0.0.1:38427/health
 ```
 
 **Restart container:**
@@ -453,7 +453,7 @@ docker images | grep hed-bot
 docker run -d \
   --name hed-bot \
   --restart unless-stopped \
-  -p 127.0.0.1:33427:38427 \
+  -p 127.0.0.1:38427:38427 \
   --env-file .env \
   hed-bot:previous-tag
 ```
@@ -519,10 +519,10 @@ Run both old and new versions simultaneously:
 
 ```bash
 # Deploy new version on alternate port
-./deploy.sh dev  # Runs on port 33428
+./deploy.sh dev  # Runs on port 38428
 
 # Test new version
-curl http://localhost:33428/health
+curl http://localhost:38428/health
 
 # Switch reverse proxy to new version
 # Update Nginx configuration
