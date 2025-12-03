@@ -230,10 +230,22 @@ def get_version_info() -> tuple:
 For full changelog, see commit history.
 """
 
+        # Build release command
+        release_cmd = [
+            "gh", "release", "create", tag_name,
+            "--title", f"Release {version}",
+            "--notes", release_notes
+        ]
+
+        # Add --prerelease flag for alpha/beta/rc versions
+        if any(label in version.lower() for label in ["alpha", "beta", "rc"]):
+            release_cmd.append("--prerelease")
+            print(f"  (Marking as pre-release since version contains alpha/beta/rc)")
+
         # Create release
         print(f"\nCreating GitHub release for {tag_name}...")
         result = subprocess.run(
-            ["gh", "release", "create", tag_name, "--title", f"Release {version}", "--notes", release_notes],
+            release_cmd,
             cwd=self.project_root,
             capture_output=True,
             text=True

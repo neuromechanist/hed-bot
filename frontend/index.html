@@ -689,6 +689,99 @@
             margin-top: 8px;
             font-family: 'JetBrains Mono', monospace;
         }
+
+        /* Server Health Indicator */
+        .server-health {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 16px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .health-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .health-dot.checking {
+            background-color: #fbbf24;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+            animation: pulse-yellow 1.5s infinite;
+        }
+
+        .health-dot.healthy {
+            background-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+        }
+
+        .health-dot.degraded {
+            background-color: #f97316;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+            animation: pulse-orange 2s infinite;
+        }
+
+        .health-dot.unhealthy {
+            background-color: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+        }
+
+        @keyframes pulse-yellow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .health-label {
+            cursor: help;
+        }
+
+        .health-tooltip {
+            position: relative;
+        }
+
+        .health-tooltip .health-tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 11px;
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .health-tooltip .health-tooltip-text::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+        .health-tooltip:hover .health-tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -857,7 +950,14 @@ Example: A red circle appears on the left side of the screen and the participant
         </div>
 
         <div class="footer">
-            <div class="version-info" id="versionInfo">Version: Loading...</div>
+            <div class="version-info">
+                <span id="versionInfo">Version: Loading...</span>
+                <span class="server-health health-tooltip">
+                    <span class="health-dot checking" id="healthDot"></span>
+                    <span class="health-label" id="healthLabel">Checking...</span>
+                    <span class="health-tooltip-text" id="healthTooltip">Checking server status...</span>
+                </span>
+            </div>
             <div>
                 &copy; 2025, <a href="https://neuromechanist.github.io" target="_blank" rel="noopener noreferrer">neuromechanist</a> and the HED Working Group
             </div>
@@ -1452,8 +1552,68 @@ ${jsonContent}`;
             }
         }
 
-        // Fetch version on page load
+        // Server Health Check
+        async function checkServerHealth() {
+            const healthDot = document.getElementById('healthDot');
+            const healthLabel = document.getElementById('healthLabel');
+            const healthTooltip = document.getElementById('healthTooltip');
+
+            try {
+                const response = await fetch(`${API_URL}/health`, {
+                    method: 'GET',
+                    // Short timeout to avoid hanging
+                    signal: AbortSignal.timeout(10000)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.status === 'healthy') {
+                        // Check if all services are available
+                        const llmOk = data.llm_available !== false;
+                        const validatorOk = data.validator_available !== false;
+
+                        if (llmOk && validatorOk) {
+                            // Fully healthy - green
+                            healthDot.className = 'health-dot healthy';
+                            healthLabel.textContent = 'Online';
+                            healthTooltip.textContent = 'Server is healthy. All services operational.';
+                        } else {
+                            // Degraded - orange
+                            healthDot.className = 'health-dot degraded';
+                            healthLabel.textContent = 'Degraded';
+                            const issues = [];
+                            if (!llmOk) issues.push('LLM unavailable');
+                            if (!validatorOk) issues.push('Validator unavailable');
+                            healthTooltip.textContent = `Server online but degraded: ${issues.join(', ')}`;
+                        }
+                    } else {
+                        // Status is not healthy - orange
+                        healthDot.className = 'health-dot degraded';
+                        healthLabel.textContent = 'Degraded';
+                        healthTooltip.textContent = `Server status: ${data.status}`;
+                    }
+                } else {
+                    // HTTP error - red
+                    healthDot.className = 'health-dot unhealthy';
+                    healthLabel.textContent = 'Offline';
+                    healthTooltip.textContent = `Server returned error: ${response.status}`;
+                }
+            } catch (error) {
+                // Network error or timeout - red
+                healthDot.className = 'health-dot unhealthy';
+                healthLabel.textContent = 'Offline';
+                healthTooltip.textContent = 'Cannot reach server. Check your connection.';
+                console.error('Health check failed:', error);
+            }
+        }
+
+        // Fetch version and check health on page load
         fetchVersion();
+        checkServerHealth();
+
+        // Periodically check server health (every 30 seconds)
+        setInterval(checkServerHealth, 30000);
     </script>
 </body>
 </html>
