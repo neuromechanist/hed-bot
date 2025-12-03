@@ -15,7 +15,61 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # First job: Build and test the image before pushing
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for testing
+        run: |
+          docker build -t hed-bot-test:ci -f ./deploy/Dockerfile .
+
+      - name: Smoke test - Start container
+        run: |
+          docker run -d --name hed-bot-test \
+            -p 38427:38427 \
+            -e REQUIRE_API_AUTH=false \
+            -e LLM_PROVIDER=openrouter \
+            -e OPENROUTER_API_KEY=test-key-for-ci \
+            -e LLM_TEMPERATURE=0.1 \
+            hed-bot-test:ci
+
+      - name: Wait for container to start
+        run: |
+          echo "Waiting for container to initialize..."
+          sleep 45
+
+      - name: Smoke test - Check health endpoint
+        run: |
+          echo "Checking health endpoint..."
+          curl -f http://localhost:38427/health || {
+            echo "Health check failed! Container logs:"
+            docker logs hed-bot-test
+            exit 1
+          }
+          echo "Health check passed!"
+
+      - name: Smoke test - Check container is healthy
+        run: |
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' hed-bot-test 2>/dev/null || echo "no-healthcheck")
+          echo "Container health status: $STATUS"
+          if [ "$STATUS" = "unhealthy" ]; then
+            echo "Container is unhealthy! Logs:"
+            docker logs hed-bot-test
+            exit 1
+          fi
+
+      - name: Cleanup test container
+        if: always()
+        run: |
+          docker stop hed-bot-test || true
+          docker rm hed-bot-test || true
+
+  # Second job: Push to registry (only after tests pass)
   build-and-push:
+    needs: build-and-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
