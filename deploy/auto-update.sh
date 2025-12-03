@@ -12,11 +12,11 @@
 #   --env ENV       Environment (prod|dev), default: prod
 #
 # Setup as cron job (check every hour):
-#   0 * * * * /path/to/deploy/auto-update.sh >> /var/log/hed-bot-update.log 2>&1
+#   0 * * * * /path/to/deploy/auto-update.sh >> /var/log/hed-bot/auto-update.log 2>&1
 
 ##### Configuration
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_FILE="${LOG_FILE:-/var/log/hed-bot-update.log}"
+LOG_FILE="${LOG_FILE:-/var/log/hed-bot/auto-update.log}"
 LOCK_FILE="/tmp/hed-bot-update.lock"
 
 # Default values
