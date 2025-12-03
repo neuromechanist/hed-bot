@@ -14,12 +14,12 @@ DEPLOY_DIR=$(cd "$(dirname "$0")/.." && pwd)
 if [ "$ENVIRONMENT" = "dev" ]; then
     IMAGE_NAME="hed-bot_dev:latest"
     CONTAINER_NAME="hed-bot_dev"
-    HOST_PORT=33428
+    HOST_PORT=38428
     URL_PREFIX="/hed-bot-dev"
 else
     IMAGE_NAME="hed-bot:latest"
     CONTAINER_NAME="hed-bot"
-    HOST_PORT=33427
+    HOST_PORT=38427
     URL_PREFIX="/hed-bot"
 fi
 
