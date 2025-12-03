@@ -223,17 +223,33 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS for production
-# Allow requests from official frontend and local development
+# Configure CORS
+# Production: Strict origin validation
+# Development: Allow all localhost ports for easy local testing
 allowed_origins = [
     "https://hed-bot.pages.dev",           # Production frontend
-    "http://localhost:5173",               # Local development
-    "http://localhost:3000",               # Alternative local dev
 ]
+
+# Add common localhost ports for development
+# These allow testing with any local dev server
+localhost_origins = [
+    "http://localhost:3000",               # React default
+    "http://localhost:5173",               # Vite default
+    "http://localhost:8080",               # Common dev server
+    "http://localhost:8000",               # Alternative
+    "http://127.0.0.1:3000",               # IPv4 localhost
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8000",
+]
+
+# Add localhost origins (can be disabled via env var for strict production)
+if os.getenv("ALLOW_LOCALHOST_CORS", "true").lower() == "true":
+    allowed_origins.extend(localhost_origins)
 
 # Add environment-specific origins if configured
 if extra_origins := os.getenv("EXTRA_CORS_ORIGINS"):
-    allowed_origins.extend(extra_origins.split(","))
+    allowed_origins.extend([origin.strip() for origin in extra_origins.split(",") if origin.strip()])
 
 # Add CORS middleware
 app.add_middleware(
