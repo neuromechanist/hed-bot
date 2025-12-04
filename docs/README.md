@@ -24,6 +24,7 @@ Welcome to the HED-BOT documentation! This directory contains comprehensive guid
 - **[OpenRouter Configuration](deployment/openrouter.md)** - Using OpenRouter API
 
 ### 🛠️ Development
+- **[Contributing](development/contributing.md)** - How to contribute, issue labeling system
 - **[Project Summary](development/project-summary.md)** - Project overview and architecture
 - **[Versioning](development/versioning.md)** - Version management
 
@@ -43,9 +44,9 @@ Welcome to the HED-BOT documentation! This directory contains comprehensive guid
 3. Configure [OpenRouter](deployment/openrouter.md) if needed
 
 ### For Contributors
-1. Review the [Project Summary](development/project-summary.md)
-2. Check open issues on GitHub
-3. Read CONTRIBUTING.md (coming soon)
+1. Read the [Contributing Guide](development/contributing.md)
+2. Review the [Project Summary](development/project-summary.md)
+3. Check open issues on GitHub
 
 ## Additional Resources
 
