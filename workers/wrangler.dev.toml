@@ -1,0 +1,40 @@
+# Dev environment Cloudflare Worker configuration
+# Deploy with: wrangler deploy --config wrangler.dev.toml
+
+name = "hed-bot-dev-api"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespaces for caching (dev-specific)
+# Create with: wrangler kv:namespace create "HED_CACHE_DEV"
+[[kv_namespaces]]
+binding = "HED_CACHE"
+id = "REPLACE_WITH_DEV_CACHE_ID"
+
+# KV Namespace for rate limiting (dev-specific)
+# Create with: wrangler kv:namespace create "RATE_LIMITER_DEV"
+[[kv_namespaces]]
+binding = "RATE_LIMITER"
+id = "REPLACE_WITH_DEV_RATE_LIMITER_ID"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+# Backend URL will be set after tunnel is configured
+# For now, using placeholder - update after dev tunnel setup
+BACKEND_URL = "https://hedtools.org/hed-bot-dev-api"
+
+# Secrets (set via wrangler secret put --config wrangler.dev.toml)
+# Run: wrangler secret put BACKEND_API_KEY --config wrangler.dev.toml
+# BACKEND_API_KEY = API key for authenticating with backend (X-API-Key header)
+#
+# Run: wrangler secret put TURNSTILE_SECRET_KEY --config wrangler.dev.toml
+# TURNSTILE_SECRET_KEY = Cloudflare Turnstile secret key for bot protection
+# Note: For dev, you may want to use Turnstile's testing keys:
+# - Always pass: 1x0000000000000000000000000000000AA
+# - Always fail: 2x0000000000000000000000000000000AA
+
+# Routes (optional - if you want custom domain)
+# routes = [
+#   { pattern = "dev-api.your-domain.com/*", zone_name = "your-domain.com" }
+# ]

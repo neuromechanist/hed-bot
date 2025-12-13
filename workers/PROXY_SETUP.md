@@ -299,4 +299,95 @@ Worker proxy is recommended for production use.
 
 ---
 
-**Last Updated**: December 2, 2025
+## Development Environment (hed-bot-dev-api)
+
+A separate worker is available for the development/staging environment.
+
+### Architecture
+
+```
+feature/* ──PR──> develop ──PR──> main
+                    │              │
+              :develop tag    :latest tag
+                    │              │
+         hed-bot-dev-api    hed-bot-api
+```
+
+### Setup Dev Worker
+
+#### 1. Create KV Namespaces for Dev
+
+```bash
+cd workers
+
+# Create dev cache namespace
+wrangler kv:namespace create "HED_CACHE_DEV"
+# Note the ID, update wrangler.dev.toml
+
+# Create dev rate limiter namespace
+wrangler kv:namespace create "RATE_LIMITER_DEV"
+# Note the ID, update wrangler.dev.toml
+```
+
+Update `wrangler.dev.toml` with the namespace IDs.
+
+#### 2. Configure Secrets
+
+```bash
+# Set backend API key for dev
+wrangler secret put BACKEND_API_KEY --config wrangler.dev.toml
+
+# Set Turnstile secret (can use testing keys for dev)
+# Always pass: 1x0000000000000000000000000000000AA
+wrangler secret put TURNSTILE_SECRET_KEY --config wrangler.dev.toml
+```
+
+#### 3. Deploy Dev Worker
+
+```bash
+# Deploy using dev config
+wrangler deploy --config wrangler.dev.toml
+
+# You'll get a URL like: https://hed-bot-dev-api.your-subdomain.workers.dev
+```
+
+### Dev vs Production Differences
+
+| Feature | Production | Development |
+|---------|------------|-------------|
+| Worker name | `hed-bot-api` | `hed-bot-dev-api` |
+| Cache TTL | 1 hour | 5 minutes |
+| Rate limit | 20/min | 60/min |
+| Backend URL | hedtools.org/hed-bot-api | hedtools.org/hed-bot-dev-api |
+| KV namespaces | Production namespaces | Dev namespaces |
+
+### Testing Dev Deployment
+
+```bash
+# Test dev health endpoint
+curl https://hed-bot-dev-api.your-subdomain.workers.dev/health | jq .
+
+# Expected output includes environment field
+{
+  "status": "healthy",
+  "proxy": "operational",
+  "environment": "development",
+  ...
+}
+```
+
+### Local Development
+
+Both configs support local development:
+
+```bash
+# Test production config locally
+wrangler dev
+
+# Test dev config locally
+wrangler dev --config wrangler.dev.toml
+```
+
+---
+
+**Last Updated**: December 12, 2025

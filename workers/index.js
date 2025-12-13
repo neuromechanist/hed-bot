@@ -5,14 +5,18 @@
  * which has all the strong prompts, real HED validation, and multi-agent workflow.
  */
 
-// Worker configuration
-const CONFIG = {
-  CACHE_TTL: 3600, // 1 hour cache for identical requests
-  RATE_LIMIT_PER_MINUTE: 20,
-  REQUEST_TIMEOUT: 120000, // 2 minutes for long-running annotation workflows
-  ALLOWED_ORIGIN: 'https://hed-bot.pages.dev', // Production frontend only
-  TURNSTILE_VERIFY_URL: 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-};
+// Worker configuration (environment-aware)
+function getConfig(env) {
+  const isDev = env.ENVIRONMENT === 'development';
+  return {
+    CACHE_TTL: isDev ? 300 : 3600, // 5 min for dev, 1 hour for prod
+    RATE_LIMIT_PER_MINUTE: isDev ? 60 : 20, // Higher limit for dev testing
+    REQUEST_TIMEOUT: 120000, // 2 minutes for long-running annotation workflows
+    ALLOWED_ORIGIN: 'https://hed-bot.pages.dev', // Production frontend
+    TURNSTILE_VERIFY_URL: 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+    IS_DEV: isDev,
+  };
+}
 
 /**
  * Verify Cloudflare Turnstile token
@@ -65,6 +69,7 @@ async function verifyTurnstileToken(token, secretKey, ip) {
 
 export default {
   async fetch(request, env, ctx) {
+    const CONFIG = getConfig(env);
     const origin = request.headers.get('Origin');
 
     // CORS validation - allow hed-bot.pages.dev and preview deployments
@@ -90,17 +95,17 @@ export default {
 
       // Route requests
       if (url.pathname === '/health') {
-        return await handleHealth(request, env, corsHeaders);
+        return await handleHealth(request, env, corsHeaders, CONFIG);
       } else if (url.pathname === '/version') {
         return await handleVersion(request, env, corsHeaders);
       } else if (url.pathname === '/annotate' && request.method === 'POST') {
-        return await handleAnnotate(request, env, ctx, corsHeaders);
+        return await handleAnnotate(request, env, ctx, corsHeaders, CONFIG);
       } else if (url.pathname === '/annotate-from-image' && request.method === 'POST') {
-        return await handleAnnotateFromImage(request, env, corsHeaders);
+        return await handleAnnotateFromImage(request, env, corsHeaders, CONFIG);
       } else if (url.pathname === '/validate' && request.method === 'POST') {
-        return await handleValidate(request, env, corsHeaders);
+        return await handleValidate(request, env, corsHeaders, CONFIG);
       } else if (url.pathname === '/') {
-        return handleRoot(corsHeaders);
+        return handleRoot(corsHeaders, CONFIG);
       }
 
       return new Response('Not Found', { status: 404, headers: corsHeaders });
@@ -116,12 +121,13 @@ export default {
 /**
  * Root endpoint
  */
-function handleRoot(corsHeaders) {
+function handleRoot(corsHeaders, CONFIG) {
   return new Response(JSON.stringify({
     name: 'HED-BOT API (Cloudflare Workers Proxy)',
     version: '2.0.0',
     description: 'Proxy to Python FastAPI backend with caching and rate limiting',
     mode: 'proxy',
+    environment: CONFIG.IS_DEV ? 'development' : 'production',
     endpoints: {
       'POST /annotate': 'Generate HED annotation from description',
       'POST /annotate-from-image': 'Generate HED annotation from image',
@@ -180,7 +186,7 @@ async function handleVersion(request, env, corsHeaders) {
 /**
  * Health check endpoint
  */
-async function handleHealth(request, env, corsHeaders) {
+async function handleHealth(request, env, corsHeaders, CONFIG) {
   const backendUrl = env.BACKEND_URL;
 
   if (!backendUrl) {
@@ -205,6 +211,7 @@ async function handleHealth(request, env, corsHeaders) {
     return new Response(JSON.stringify({
       status: 'healthy',
       proxy: 'operational',
+      environment: CONFIG.IS_DEV ? 'development' : 'production',
       backend: backendHealth,
       backend_url: backendUrl,
     }), {
@@ -237,7 +244,7 @@ async function hashString(str) {
 /**
  * Main annotation endpoint (proxies to backend)
  */
-async function handleAnnotate(request, env, ctx, corsHeaders) {
+async function handleAnnotate(request, env, ctx, corsHeaders, CONFIG) {
   const backendUrl = env.BACKEND_URL;
 
   if (!backendUrl) {
@@ -282,7 +289,7 @@ async function handleAnnotate(request, env, ctx, corsHeaders) {
   }
 
   // Check rate limit
-  if (!await checkRateLimit(request, env)) {
+  if (!await checkRateLimit(request, env, CONFIG)) {
     return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
       status: 429,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -356,7 +363,7 @@ async function handleAnnotate(request, env, ctx, corsHeaders) {
 /**
  * Image annotation endpoint (proxies to backend)
  */
-async function handleAnnotateFromImage(request, env, corsHeaders) {
+async function handleAnnotateFromImage(request, env, corsHeaders, CONFIG) {
   const backendUrl = env.BACKEND_URL;
 
   if (!backendUrl) {
@@ -450,7 +457,7 @@ async function handleAnnotateFromImage(request, env, corsHeaders) {
 /**
  * Validation endpoint (proxies to backend)
  */
-async function handleValidate(request, env, corsHeaders) {
+async function handleValidate(request, env, corsHeaders, CONFIG) {
   const backendUrl = env.BACKEND_URL;
 
   if (!backendUrl) {
@@ -505,7 +512,7 @@ async function handleValidate(request, env, corsHeaders) {
 /**
  * Rate limiting check
  */
-async function checkRateLimit(request, env) {
+async function checkRateLimit(request, env, CONFIG) {
   if (!env.RATE_LIMITER) return true; // No rate limiter configured
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
