@@ -44,7 +44,7 @@ def test_tag_extended_has_diverse_examples(remediator):
         ("Move-body/Cartwheel", "actions (Action tree)"),
         ("Furniture/Armoire", "furniture (Item tree)"),
         ("Vehicle/Rickshaw", "vehicles (Item tree)"),
-        ("Mammal/Dolphin", "animals (Agent tree)"),
+        ("Animal/Dolphin", "animals (Item tree)"),
     ]
 
     for example, tree in diverse_examples:

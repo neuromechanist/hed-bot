@@ -82,7 +82,7 @@ def test_specific_guidance():
         ("Move-body/Cartwheel", "Contains action example (Action tree)"),
         ("Furniture/Armoire", "Contains furniture example (Item tree)"),
         ("Vehicle/Rickshaw", "Contains vehicle example (Item tree)"),
-        ("Mammal/Dolphin", "Contains animal example (Agent tree)"),
+        ("Animal/Dolphin", "Contains animal example (Item tree)"),
     ]
 
     print("\n--- Content Checks ---")

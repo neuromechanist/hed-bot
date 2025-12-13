@@ -43,9 +43,10 @@ EXAMPLES FROM DIFFERENT SCHEMA AREAS:
    BAD:  Item/Rickshaw, Object/Rickshaw
    GOOD: Vehicle/Rickshaw (a rickshaw IS-A vehicle)
 
-5. ANIMALS (Agent/Animal tree):
-   BAD:  Agent/Dolphin, Animal/Dolphin
-   GOOD: Mammal/Dolphin (a dolphin IS-A mammal, which is more specific than Animal)
+5. ANIMALS (Item/Biological-item/Organism/Animal tree):
+   BAD:  Item/Dolphin, Organism/Dolphin
+   GOOD: Animal/Dolphin (a dolphin IS-A animal)
+   NOTE: There is no Mammal in base schema - extend directly from Animal
 
 Before extending, check if the tag already exists in the schema vocabulary.
 If it exists, use it directly without any parent path.""",
@@ -55,14 +56,14 @@ If it exists, use it directly without any parent path.""",
                     "Action/Cartwheel",
                     "Item/Armoire",
                     "Object/Rickshaw",
-                    "Agent/Dolphin",
+                    "Item/Dolphin",
                 ],
                 "correct": [
                     "Building/Cottage",
                     "Move-body/Cartwheel",
                     "Furniture/Armoire",
                     "Vehicle/Rickshaw",
-                    "Mammal/Dolphin",
+                    "Animal/Dolphin",
                 ],
             },
         },
@@ -82,7 +83,7 @@ If it exists, use it directly without any parent path.""",
    FIX: Instead of extending, GROUP the agent/event with descriptive tags:
 
    WRONG: Animal-agent/Marmoset (Animal-agent doesn't allow extension!)
-   RIGHT: (Animal-agent, Mammal/Marmoset) - group agent type with Item description
+   RIGHT: (Animal-agent, Animal/Marmoset) - group agent type with Item/Animal extension
 
    WRONG: Human-agent/Experimenter
    RIGHT: (Human-agent, Experiment-participant)
@@ -103,7 +104,7 @@ If it exists, use it directly without any parent path.""",
                     "Sensory-event/Custom",
                 ],
                 "correct": [
-                    "(Animal-agent, Mammal/Marmoset)",
+                    "(Animal-agent, Animal/Marmoset)",
                     "(Human-agent, Experiment-participant)",
                     "Red",
                     "Sensory-event, Visual-presentation",

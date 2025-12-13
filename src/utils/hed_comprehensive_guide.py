@@ -98,10 +98,10 @@ AGENT SUBTREE:
 ### PATTERN: Group agents with descriptive Items, don't extend!
 
 WRONG: Animal-agent/Marmoset (CANNOT extend Animal-agent!)
-RIGHT: (Animal-agent, Mammal/Marmoset)
+RIGHT: (Animal-agent, Animal/Marmoset)
 
 WRONG: Animal-agent/Dolphin
-RIGHT: (Animal-agent, Mammal/Dolphin)
+RIGHT: (Animal-agent, Animal/Dolphin)
 
 WRONG: Human-agent/Experimenter
 RIGHT: (Human-agent, Experiment-participant)
@@ -116,7 +116,7 @@ RIGHT: (Human-agent, Experiment-participant)
 
 EXAMPLE: A marmoset performs an action
 WRONG: Agent-action, ((Animal-agent/Marmoset), (Reach, Target))
-RIGHT: Agent-action, ((Animal-agent, Mammal/Marmoset), (Reach, Target))
+RIGHT: Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
 
 EXAMPLE: Participant responds
 RIGHT: Agent-action, Participant-response, ((Human-agent, Experiment-participant), (Press, Button))
@@ -137,7 +137,7 @@ extend from the MOST SPECIFIC applicable parent tag.
 - Building/Cottage (Cottage is-a Building - correct taxonomy)
 - Move-body/Cartwheel (Cartwheel is-a body movement)
 - Vehicle/Rickshaw (Rickshaw is-a vehicle)
-- Mammal/Marmoset (Marmoset is-a mammal)
+- Animal/Marmoset (Marmoset is-a animal)
 - Furniture/Armoire (Armoire is-a furniture)
 
 ### Extension Decision Process
@@ -148,7 +148,7 @@ extend from the MOST SPECIFIC applicable parent tag.
 
 ### Cannot Extend These (use grouping instead)
 - Event subtree - group with modality tags (Visual-presentation, etc.)
-- Agent subtree - group with Item tags (Mammal/X, Experiment-participant, etc.)
+- Agent subtree - group with Item tags (Animal/X, Experiment-participant, etc.)
 - Value-taking nodes (tags with # child) - cannot extend after #
 
 ---
@@ -270,7 +270,7 @@ NOT IN VOCABULARY -> Extend from MOST SPECIFIC parent:
 - Building/Cottage (not Item/Cottage or Object/Cottage)
 - Furniture/Armoire (not Item/Armoire or Furnishing/Armoire)
 - Vehicle/Rickshaw (not Item/Rickshaw or Object/Rickshaw)
-- Mammal/Dolphin (not Agent/Dolphin or Animal/Dolphin)
+- Animal/Dolphin (not Agent/Dolphin or Animal/Dolphin)
 
 ### PROPERTIES (colors, attributes)
 IN VOCABULARY -> Use as-is: Red, Blue, Green, Large
@@ -295,13 +295,13 @@ FOR HUMANS:
 - Agent-action, ((Human-agent, Experiment-participant), (Press, Button))
 
 FOR ANIMALS:
-- (Animal-agent, Mammal/Marmoset) - a marmoset
-- (Animal-agent, Mammal/Dolphin) - a dolphin
+- (Animal-agent, Animal/Marmoset) - a marmoset
+- (Animal-agent, Animal/Dolphin) - a dolphin
 - (Animal-agent, Bird/Parrot) - a parrot (if Bird is extendable)
-- Agent-action, ((Animal-agent, Mammal/Marmoset), (Reach, Target))
+- Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
 
 WRONG: Animal-agent/Marmoset, Human-agent/Subject (CANNOT extend!)
-RIGHT: (Animal-agent, Mammal/Marmoset), (Human-agent, Experiment-participant)
+RIGHT: (Animal-agent, Animal/Marmoset), (Human-agent, Experiment-participant)
 
 ---
 
@@ -314,7 +314,7 @@ Sensory-event, Experimental-stimulus, Visual-presentation, (Red, Circle)
 Agent-action, Participant-response, ((Human-agent, Experiment-participant), (Press, (Left, Mouse-button)))
 
 ### Animal agent action
-Agent-action, ((Animal-agent, Mammal/Marmoset), (Reach, Target))
+Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
 
 ### Spatial relationship
 Sensory-event, Visual-presentation, ((Red, Circle), (To-left-of, (Green, Square)))
