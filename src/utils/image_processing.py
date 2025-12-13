@@ -7,9 +7,8 @@ validating images, and preparing them for vision model processing.
 import base64
 import io
 import re
-from typing import Tuple, Optional
-from PIL import Image
 
+from PIL import Image
 
 MAX_IMAGE_SIZE_MB = 10
 MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
@@ -18,25 +17,29 @@ SUPPORTED_FORMATS = {"PNG", "JPEG", "JPG", "WEBP"}
 
 class ImageProcessingError(Exception):
     """Base exception for image processing errors."""
+
     pass
 
 
 class InvalidImageFormatError(ImageProcessingError):
     """Raised when image format is not supported."""
+
     pass
 
 
 class ImageSizeExceededError(ImageProcessingError):
     """Raised when image size exceeds maximum allowed size."""
+
     pass
 
 
 class InvalidBase64Error(ImageProcessingError):
     """Raised when base64 encoding is invalid."""
+
     pass
 
 
-def parse_data_uri(data_uri: str) -> Tuple[str, str]:
+def parse_data_uri(data_uri: str) -> tuple[str, str]:
     """Parse a data URI and extract mime type and base64 data.
 
     Args:
@@ -49,9 +52,11 @@ def parse_data_uri(data_uri: str) -> Tuple[str, str]:
         InvalidBase64Error: If data URI format is invalid
     """
     # Match data URI pattern: data:[<mime-type>][;base64],<data>
-    match = re.match(r'data:([^;]+);base64,(.+)', data_uri)
+    match = re.match(r"data:([^;]+);base64,(.+)", data_uri)
     if not match:
-        raise InvalidBase64Error("Invalid data URI format. Expected: data:image/<type>;base64,<data>")
+        raise InvalidBase64Error(
+            "Invalid data URI format. Expected: data:image/<type>;base64,<data>"
+        )
 
     mime_type = match.group(1)
     base64_data = match.group(2)
@@ -59,7 +64,7 @@ def parse_data_uri(data_uri: str) -> Tuple[str, str]:
     return mime_type, base64_data
 
 
-def decode_base64_image(base64_str: str, validate: bool = True) -> Tuple[Image.Image, dict]:
+def decode_base64_image(base64_str: str, validate: bool = True) -> tuple[Image.Image, dict]:
     """Decode a base64 string to a PIL Image and extract metadata.
 
     Args:
@@ -76,14 +81,14 @@ def decode_base64_image(base64_str: str, validate: bool = True) -> Tuple[Image.I
     """
     # Handle data URI format
     mime_type = None
-    if base64_str.startswith('data:'):
+    if base64_str.startswith("data:"):
         mime_type, base64_str = parse_data_uri(base64_str)
 
     # Decode base64
     try:
         image_bytes = base64.b64decode(base64_str)
     except Exception as e:
-        raise InvalidBase64Error(f"Failed to decode base64 string: {e}")
+        raise InvalidBase64Error(f"Failed to decode base64 string: {e}") from e
 
     # Check size
     size_bytes = len(image_bytes)
@@ -97,7 +102,7 @@ def decode_base64_image(base64_str: str, validate: bool = True) -> Tuple[Image.I
     try:
         image = Image.open(io.BytesIO(image_bytes))
     except Exception as e:
-        raise InvalidImageFormatError(f"Failed to open image: {e}")
+        raise InvalidImageFormatError(f"Failed to open image: {e}") from e
 
     # Validate format
     if validate and image.format not in SUPPORTED_FORMATS:
@@ -115,7 +120,7 @@ def decode_base64_image(base64_str: str, validate: bool = True) -> Tuple[Image.I
         "height": image.height,
         "size_bytes": size_bytes,
         "size_mb": size_bytes / (1024 * 1024),
-        "mime_type": mime_type or f"image/{image.format.lower()}"
+        "mime_type": mime_type or f"image/{image.format.lower()}",
     }
 
     return image, metadata
@@ -135,7 +140,7 @@ def encode_image_to_base64(image: Image.Image, format: str = "PNG") -> str:
     image.save(buffer, format=format)
     buffer.seek(0)
     base64_bytes = base64.b64encode(buffer.read())
-    return base64_bytes.decode('utf-8')
+    return base64_bytes.decode("utf-8")
 
 
 def create_data_uri(image: Image.Image, format: str = "PNG") -> str:
@@ -171,20 +176,12 @@ def validate_image_data(base64_str: str) -> dict:
     """
     try:
         _, metadata = decode_base64_image(base64_str, validate=True)
-        return {
-            "valid": True,
-            "error": None,
-            "metadata": metadata
-        }
+        return {"valid": True, "error": None, "metadata": metadata}
     except ImageProcessingError as e:
-        return {
-            "valid": False,
-            "error": str(e),
-            "metadata": None
-        }
+        return {"valid": False, "error": str(e), "metadata": None}
 
 
-def prepare_image_for_vision_model(base64_str: str) -> Tuple[str, dict]:
+def prepare_image_for_vision_model(base64_str: str) -> tuple[str, dict]:
     """Prepare image for vision model processing.
 
     This function validates the image and ensures it's in the correct format
@@ -203,11 +200,11 @@ def prepare_image_for_vision_model(base64_str: str) -> Tuple[str, dict]:
     image, metadata = decode_base64_image(base64_str, validate=True)
 
     # Convert to data URI if not already
-    if base64_str.startswith('data:'):
+    if base64_str.startswith("data:"):
         data_uri = base64_str
     else:
         # Use original format if possible, otherwise PNG
-        format = metadata.get('format', 'PNG')
+        format = metadata.get("format", "PNG")
         data_uri = create_data_uri(image, format)
 
     return data_uri, metadata
