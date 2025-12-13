@@ -95,31 +95,48 @@ AGENT SUBTREE:
 - Agent, Human-agent, Animal-agent, Avatar-agent
 - Controller-agent, Robotic-agent, Software-agent
 
-### PATTERN: Group agents with descriptive Items, don't extend!
+### PATTERN: Group agents with descriptive Items/Properties, don't extend!
 
-WRONG: Animal-agent/Marmoset (CANNOT extend Animal-agent!)
+WRONG: Human-agent/Subject (CANNOT extend Human-agent!)
+RIGHT: (Human-agent, Experiment-participant)
+
+WRONG: Animal-agent/Marmoset
 RIGHT: (Animal-agent, Animal/Marmoset)
 
-WRONG: Animal-agent/Dolphin
-RIGHT: (Animal-agent, Animal/Dolphin)
+WRONG: Robotic-agent/Drone
+RIGHT: (Robotic-agent, Robot/Drone)
 
-WRONG: Human-agent/Experimenter
-RIGHT: (Human-agent, Experiment-participant)
+WRONG: Software-agent/Algorithm
+RIGHT: (Software-agent, Label/My-algorithm)
 
-WRONG: Human-agent/Subject
-RIGHT: (Human-agent, Experiment-participant)
+WRONG: Controller-agent/Computer
+RIGHT: (Controller-agent, Computer)
 
 ### How to describe agents:
 1. Pick the agent TYPE from Agent subtree: Human-agent, Animal-agent, etc.
-2. GROUP it with descriptive tags from Item/Property subtrees
-3. If the animal/person type doesn't exist in vocab, extend from Item subtree
+2. GROUP it with descriptive tags from Item or Property subtrees
+3. Use Label/X for custom names if no appropriate Item exists
 
-EXAMPLE: A marmoset performs an action
-WRONG: Agent-action, ((Animal-agent/Marmoset), (Reach, Target))
-RIGHT: Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
+EXAMPLES FOR EACH AGENT TYPE:
 
-EXAMPLE: Participant responds
-RIGHT: Agent-action, Participant-response, ((Human-agent, Experiment-participant), (Press, Button))
+Human-agent:
+- (Human-agent, Experiment-participant) - subject in experiment
+- (Human-agent, Experimenter) - researcher running experiment
+
+Animal-agent:
+- (Animal-agent, Animal/Marmoset) - a marmoset (extend from Animal)
+- (Animal-agent, Animal/Dolphin) - a dolphin
+
+Robotic-agent:
+- (Robotic-agent, Robot/Arm) - a robotic arm
+- (Robotic-agent, Robot/Drone) - a drone
+
+Controller-agent:
+- (Controller-agent, Computer) - computer controlling experiment
+- (Controller-agent, Machine/Stimulator) - a stimulation device
+
+Software-agent:
+- (Software-agent, Label/BCI-decoder) - a brain-computer interface algorithm
 
 ---
 
@@ -290,18 +307,14 @@ NOT IN VOCABULARY -> Extend from MOST SPECIFIC parent:
 ### AGENTS (CANNOT extend - use grouping!)
 Agent subtree tags CANNOT be extended. Group with descriptive Items instead.
 
-FOR HUMANS:
-- (Human-agent, Experiment-participant) - human in experiment
-- Agent-action, ((Human-agent, Experiment-participant), (Press, Button))
+FOR HUMANS: (Human-agent, Experiment-participant) or (Human-agent, Experimenter)
+FOR ANIMALS: (Animal-agent, Animal/Marmoset) - extend from Item/Animal
+FOR ROBOTS: (Robotic-agent, Robot/Drone) - extend from Item/Robot
+FOR SOFTWARE: (Software-agent, Label/My-algorithm) - use Label for custom names
+FOR CONTROLLERS: (Controller-agent, Computer) or (Controller-agent, Machine/Stimulator)
 
-FOR ANIMALS:
-- (Animal-agent, Animal/Marmoset) - a marmoset
-- (Animal-agent, Animal/Dolphin) - a dolphin
-- (Animal-agent, Bird/Parrot) - a parrot (if Bird is extendable)
-- Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
-
-WRONG: Animal-agent/Marmoset, Human-agent/Subject (CANNOT extend!)
-RIGHT: (Animal-agent, Animal/Marmoset), (Human-agent, Experiment-participant)
+WRONG: Human-agent/Subject, Animal-agent/Marmoset, Robotic-agent/Drone
+RIGHT: (Human-agent, Experiment-participant), (Animal-agent, Animal/Marmoset), (Robotic-agent, Robot/Drone)
 
 ---
 
@@ -315,6 +328,9 @@ Agent-action, Participant-response, ((Human-agent, Experiment-participant), (Pre
 
 ### Animal agent action
 Agent-action, ((Animal-agent, Animal/Marmoset), (Reach, Target))
+
+### Robot agent action
+Agent-action, ((Robotic-agent, Robot/Arm), (Move, Target))
 
 ### Spatial relationship
 Sensory-event, Visual-presentation, ((Red, Circle), (To-left-of, (Green, Square)))
