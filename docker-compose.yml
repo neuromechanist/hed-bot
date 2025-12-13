@@ -39,10 +39,10 @@ services:
       # OpenRouter Configuration (used when LLM_PROVIDER=openrouter)
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - LLM_PROVIDER_PREFERENCE=${LLM_PROVIDER_PREFERENCE}
-      - ANNOTATION_MODEL=${ANNOTATION_MODEL:-gpt-5-mini}
-      - EVALUATION_MODEL=${EVALUATION_MODEL:-gpt-5-mini}
-      - ASSESSMENT_MODEL=${ASSESSMENT_MODEL:-gpt-5-mini}
-      - FEEDBACK_MODEL=${FEEDBACK_MODEL:-gpt-5-nano}
+      - ANNOTATION_MODEL=${ANNOTATION_MODEL:-openai/gpt-oss-120b}
+      - EVALUATION_MODEL=${EVALUATION_MODEL:-qwen/qwen3-235b-a22b-2507}
+      - ASSESSMENT_MODEL=${ASSESSMENT_MODEL:-openai/gpt-oss-120b}
+      - FEEDBACK_MODEL=${FEEDBACK_MODEL:-openai/gpt-oss-120b}
 
       # Ollama Configuration (used when LLM_PROVIDER=ollama)
       - LLM_BASE_URL=${LLM_BASE_URL:-http://ollama:11434}

@@ -1,8 +1,7 @@
 """Feedback summarization agent for condensing validation errors and feedback.
 
-This agent uses a cheap, fast model (like gpt-5-nano) to summarize
-validation errors and evaluation/assessment feedback into concise,
-actionable points for the annotation agent.
+This agent summarizes validation errors and evaluation/assessment feedback
+into concise, actionable points for the annotation agent.
 """
 
 from langchain_core.language_models import BaseChatModel
@@ -13,7 +12,7 @@ from src.agents.state import HedAnnotationState
 
 class FeedbackSummarizer:
     """Agent that summarizes validation errors and feedback.
-    
+
     Uses a cheap, fast model to condense verbose error messages and
     feedback into concise, actionable summaries for the annotation agent.
     """
@@ -22,7 +21,7 @@ class FeedbackSummarizer:
         """Initialize the feedback summarizer.
 
         Args:
-            llm: Language model for summarization (should be fast/cheap like gpt-5-nano)
+            llm: Language model for summarization
         """
         self.llm = llm
 
@@ -80,7 +79,9 @@ Be direct and actionable."""
         if not feedback_parts:
             return "No feedback to summarize."
 
-        return "\n\n".join(feedback_parts) + "\n\nSummarize the above into concise, actionable points:"
+        return (
+            "\n\n".join(feedback_parts) + "\n\nSummarize the above into concise, actionable points:"
+        )
 
     async def summarize(self, state: HedAnnotationState) -> dict:
         """Summarize validation errors and feedback.

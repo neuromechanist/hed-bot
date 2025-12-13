@@ -7,24 +7,19 @@ and validation using the multi-agent workflow.
 import asyncio
 import json
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# Load environment variables from .env file
 from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_community.chat_models import ChatOllama
-from langchain_core.language_models import BaseChatModel
-import time
 
 from src import __version__
-from src.agents.workflow import HedAnnotationWorkflow
 from src.agents.vision_agent import VisionAgent
-from src.utils.openrouter_llm import create_openrouter_llm, get_model_name
+from src.agents.workflow import HedAnnotationWorkflow
 from src.api.models import (
     AnnotationRequest,
     AnnotationResponse,
@@ -35,8 +30,12 @@ from src.api.models import (
     ValidationResponse,
 )
 from src.api.security import api_key_auth, audit_logger
+from src.utils.openrouter_llm import create_openrouter_llm, get_model_name
 from src.utils.schema_loader import HedSchemaLoader
 from src.validation.hed_validator import HedPythonValidator
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Global workflow and vision agent instances
 workflow: HedAnnotationWorkflow | None = None
@@ -109,18 +108,22 @@ async def lifespan(app: FastAPI):
         # OpenRouter configuration
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
-            raise ValueError("OPENROUTER_API_KEY environment variable is required when using OpenRouter")
+            raise ValueError(
+                "OPENROUTER_API_KEY environment variable is required when using OpenRouter"
+            )
 
         # Provider preference (e.g., "Cerebras" for ultra-fast inference)
         provider_preference = os.getenv("LLM_PROVIDER_PREFERENCE")
 
         # Per-agent model configuration
-        annotation_model = get_model_name(os.getenv("ANNOTATION_MODEL", "gpt-5-mini"))
-        evaluation_model = get_model_name(os.getenv("EVALUATION_MODEL", "gpt-5-mini"))
-        assessment_model = get_model_name(os.getenv("ASSESSMENT_MODEL", "gpt-5-mini"))
-        feedback_model = get_model_name(os.getenv("FEEDBACK_MODEL", "gpt-5-nano"))
+        annotation_model = get_model_name(os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b"))
+        evaluation_model = get_model_name(
+            os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
+        )
+        assessment_model = get_model_name(os.getenv("ASSESSMENT_MODEL", "openai/gpt-oss-120b"))
+        feedback_model = get_model_name(os.getenv("FEEDBACK_MODEL", "openai/gpt-oss-120b"))
 
-        print(f"Using OpenRouter with models:")
+        print("Using OpenRouter with models:")
         print(f"  Annotation: {annotation_model}")
         print(f"  Evaluation: {evaluation_model}")
         print(f"  Assessment: {assessment_model}")
@@ -186,7 +189,7 @@ async def lifespan(app: FastAPI):
     # Set global schema_loader from workflow
     schema_loader = workflow.schema_loader
 
-    print(f"Workflow initialized successfully!")
+    print("Workflow initialized successfully!")
     print(f"  LLM Provider: {llm_provider} (temperature={llm_temperature})")
     print(f"  JavaScript validator: {use_js_validator}")
 
@@ -227,17 +230,17 @@ app = FastAPI(
 # Production: Strict origin validation
 # Development: Allow all localhost ports for easy local testing
 allowed_origins = [
-    "https://hed-bot.pages.dev",           # Production frontend
+    "https://hed-bot.pages.dev",  # Production frontend
 ]
 
 # Add common localhost ports for development
 # These allow testing with any local dev server
 localhost_origins = [
-    "http://localhost:3000",               # React default
-    "http://localhost:5173",               # Vite default
-    "http://localhost:8080",               # Common dev server
-    "http://localhost:8000",               # Alternative
-    "http://127.0.0.1:3000",               # IPv4 localhost
+    "http://localhost:3000",  # React default
+    "http://localhost:5173",  # Vite default
+    "http://localhost:8080",  # Common dev server
+    "http://localhost:8000",  # Alternative
+    "http://127.0.0.1:3000",  # IPv4 localhost
     "http://127.0.0.1:5173",
     "http://127.0.0.1:8080",
     "http://127.0.0.1:8000",
@@ -249,7 +252,9 @@ if os.getenv("ALLOW_LOCALHOST_CORS", "true").lower() == "true":
 
 # Add environment-specific origins if configured
 if extra_origins := os.getenv("EXTRA_CORS_ORIGINS"):
-    allowed_origins.extend([origin.strip() for origin in extra_origins.split(",") if origin.strip()])
+    allowed_origins.extend(
+        [origin.strip() for origin in extra_origins.split(",") if origin.strip()]
+    )
 
 # Add CORS middleware
 app.add_middleware(
@@ -316,8 +321,7 @@ async def health_check() -> HealthResponse:
 
 @app.post("/annotate", response_model=AnnotationResponse)
 async def annotate(
-    request: AnnotationRequest,
-    api_key: str = Depends(api_key_auth)
+    request: AnnotationRequest, api_key: str = Depends(api_key_auth)
 ) -> AnnotationResponse:
     """Generate HED annotation from natural language description.
 
@@ -377,8 +381,7 @@ async def annotate(
 
 @app.post("/annotate-from-image", response_model=ImageAnnotationResponse)
 async def annotate_from_image(
-    request: ImageAnnotationRequest,
-    api_key: str = Depends(api_key_auth)
+    request: ImageAnnotationRequest, api_key: str = Depends(api_key_auth)
 ) -> ImageAnnotationResponse:
     """Generate HED annotation from an image.
 
@@ -402,8 +405,7 @@ async def annotate_from_image(
 
     if vision_agent is None:
         raise HTTPException(
-            status_code=503,
-            detail="Vision model not available. Please use OpenRouter provider."
+            status_code=503, detail="Vision model not available. Please use OpenRouter provider."
         )
 
     try:
@@ -477,36 +479,32 @@ async def annotate_stream(request: AnnotationRequest):
         """Generate SSE events for workflow progress."""
         try:
             # Progress queue for receiving updates from workflow
-            progress_queue = asyncio.Queue()
+            asyncio.Queue()
 
             # Helper to send SSE event
             def send_event(event_type: str, data: dict):
                 return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
             # Send initial start event
-            yield send_event("progress", {
-                "stage": "starting",
-                "message": "Initializing annotation workflow..."
-            })
+            yield send_event(
+                "progress", {"stage": "starting", "message": "Initializing annotation workflow..."}
+            )
 
             # Run workflow with progress monitoring
             # Note: We'll need to modify workflow to accept progress callback
             # For now, we'll use a simple approach with state polling
 
             # Start workflow in background task
-            import asyncio
-            from src.agents.state import create_initial_state
 
             # Note: create_initial_state is called internally by workflow.run()
             # No need to create it here
 
             # Track workflow progress by monitoring state changes
             # This is a simplified version - ideally we'd use callbacks
-            yield send_event("progress", {
-                "stage": "annotating",
-                "message": "Generating HED annotation...",
-                "attempt": 1
-            })
+            yield send_event(
+                "progress",
+                {"stage": "annotating", "message": "Generating HED annotation...", "attempt": 1},
+            )
 
             # Run workflow
             final_state = await workflow.run(
@@ -546,14 +544,13 @@ async def annotate_stream(request: AnnotationRequest):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+        },
     )
 
 
 @app.post("/validate", response_model=ValidationResponse)
 async def validate(
-    request: ValidationRequest,
-    api_key: str = Depends(api_key_auth)
+    request: ValidationRequest, api_key: str = Depends(api_key_auth)
 ) -> ValidationResponse:
     """Validate a HED annotation string.
 

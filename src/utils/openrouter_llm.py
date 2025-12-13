@@ -1,11 +1,11 @@
 """OpenRouter LLM integration for cloud model access."""
 
-from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
 
 
 def create_openrouter_llm(
-    model: str = "openai/gpt-5-mini",
+    model: str = "openai/gpt-oss-120b",
     api_key: str | None = None,
     temperature: float = 0.1,
     max_tokens: int | None = None,
@@ -14,11 +14,11 @@ def create_openrouter_llm(
     """Create an OpenRouter LLM instance.
 
     Args:
-        model: Model identifier (e.g., "openai/gpt-5-mini", "anthropic/claude-haiku-4.5")
+        model: Model identifier (e.g., "openai/gpt-oss-120b")
         api_key: OpenRouter API key
         temperature: Sampling temperature (0.0-1.0)
         max_tokens: Maximum tokens to generate
-        provider: Specific provider to use (e.g., "Cerebras", "SambaNova", "Groq")
+        provider: Specific provider to use (e.g., "Cerebras")
 
     Returns:
         ChatOpenAI instance configured for OpenRouter
@@ -47,28 +47,19 @@ def create_openrouter_llm(
     )
 
 
-# Common model configurations
+# Model configuration - using gpt-oss-120b via Cerebras
 OPENROUTER_MODELS = {
-    # Fast, cheap models for annotation
-    "gpt-5-mini": "openai/gpt-5-mini",
-    "claude-haiku": "anthropic/claude-haiku-4.5",
-    
-    # Ultra-cheap models for feedback summarization
-    "gpt-5-nano": "openai/gpt-5-nano",
-    
-    # Premium models for complex tasks
-    "gpt-5": "openai/gpt-5",
-    "claude-sonnet": "anthropic/claude-sonnet-4.5",
-    "claude-opus": "anthropic/claude-opus-4.5",
+    # Primary model for all agents (fast inference via Cerebras)
+    "gpt-oss-120b": "openai/gpt-oss-120b",
 }
 
 
 def get_model_name(alias: str) -> str:
     """Get full model name from alias.
-    
+
     Args:
-        alias: Model alias (e.g., "gpt-5-mini")
-    
+        alias: Model alias (e.g., "gpt-oss-120b")
+
     Returns:
         Full model identifier for OpenRouter
     """
