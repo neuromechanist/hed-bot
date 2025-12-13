@@ -11,7 +11,7 @@
 services:
   # HED-BOT Dev API service
   hed-bot-dev:
-    image: ghcr.io/neuromechanist/hed-bot:develop
+    image: ghcr.io/neuromechanist/hed-bot:dev
     container_name: hed-bot-dev
     environment:
       # LLM Provider Configuration

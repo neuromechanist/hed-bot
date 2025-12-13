@@ -105,6 +105,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             # Latest tag for main branch
             type=raw,value=latest,enable={{is_default_branch}}
+            # Dev tag for develop branch
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/develop' }}
             # Commit SHA for traceability
             type=sha,prefix=sha-
 

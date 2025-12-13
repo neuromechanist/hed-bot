@@ -50,7 +50,7 @@ done
 if [ "$ENVIRONMENT" = "dev" ]; then
     IMAGE_NAME="hed-bot-dev:latest"
     CONTAINER_NAME="hed-bot-dev"
-    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:develop"
+    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:dev"
 else
     IMAGE_NAME="hed-bot:latest"
     CONTAINER_NAME="hed-bot"
