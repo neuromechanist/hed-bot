@@ -23,12 +23,11 @@ def create_openrouter_llm(
     Returns:
         ChatOpenAI instance configured for OpenRouter
     """
-    # Build model kwargs with extra headers
-    model_kwargs = {
-        "extra_headers": {
-            "HTTP-Referer": "https://github.com/hed-standard/hed-bot",
-            "X-Title": "HED-BOT",
-        }
+    # OpenRouter requires these headers for app identification
+    # Using default_headers (not model_kwargs) to ensure headers are sent
+    default_headers = {
+        "HTTP-Referer": "https://github.com/hed-standard/hed-bot",
+        "X-Title": "HED-BOT",
     }
 
     # Build extra_body for provider preference
@@ -42,7 +41,7 @@ def create_openrouter_llm(
         openai_api_base="https://openrouter.ai/api/v1",
         temperature=temperature,
         max_tokens=max_tokens,
-        model_kwargs=model_kwargs,
+        default_headers=default_headers,
         extra_body=extra_body,
     )
 
