@@ -7,6 +7,7 @@ and provides detailed feedback for corrections.
 from pathlib import Path
 
 from src.agents.state import HedAnnotationState
+from src.utils.error_remediation import get_remediator
 from src.utils.schema_loader import HedSchemaLoader
 from src.validation.hed_validator import HedJavaScriptValidator, HedPythonValidator
 
@@ -22,6 +23,7 @@ class ValidationAgent:
         schema_loader: HedSchemaLoader,
         use_javascript: bool = True,
         validator_path: Path | None = None,
+        tests_json_path: Path | str | None = None,
     ) -> None:
         """Initialize the validation agent.
 
@@ -29,9 +31,11 @@ class ValidationAgent:
             schema_loader: HED schema loader
             use_javascript: Whether to use JavaScript validator (more detailed)
             validator_path: Path to hed-javascript repository (required if use_javascript=True)
+            tests_json_path: Optional path to javascriptTests.json for error remediation
         """
         self.schema_loader = schema_loader
         self.use_javascript = use_javascript
+        self.error_remediator = get_remediator(tests_json_path)
 
         if use_javascript:
             if validator_path is None:
@@ -68,6 +72,11 @@ class ValidationAgent:
         error_messages = [f"[{e.code}] {e.message}" for e in result.errors]
         warning_messages = [f"[{w.code}] {w.message}" for w in result.warnings]
 
+        # Augment with remediation guidance
+        augmented_errors, augmented_warnings = self.error_remediator.augment_validation_errors(
+            error_messages, warning_messages
+        )
+
         # Determine validation status
         validation_attempts = state["validation_attempts"] + 1
         max_attempts = state["max_validation_attempts"]
@@ -83,11 +92,11 @@ class ValidationAgent:
         else:
             validation_status = "invalid"
 
-        # Update state
+        # Update state with augmented feedback
         return {
             "validation_status": validation_status,
-            "validation_errors": error_messages,
-            "validation_warnings": warning_messages,
+            "validation_errors": augmented_errors,
+            "validation_warnings": augmented_warnings,
             "validation_attempts": validation_attempts,
             "is_valid": is_valid,
         }
