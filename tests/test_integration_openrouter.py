@@ -104,8 +104,10 @@ class TestAnnotationAgentIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
-        # Use default schema directory
+        # Use local schema directory if available, otherwise None (uses HED library default)
         schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
+        if not schema_dir.exists():
+            schema_dir = None
 
         return AnnotationAgent(llm=llm, schema_dir=schema_dir)
 
@@ -157,7 +159,10 @@ class TestEvaluationAgentIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
+        # Use local schema directory if available, otherwise None
         schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
+        if not schema_dir.exists():
+            schema_dir = None
 
         return EvaluationAgent(llm=llm, schema_dir=schema_dir)
 
@@ -206,8 +211,13 @@ class TestWorkflowIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
+        # Use local paths if available, otherwise None (uses defaults)
         schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
         validator_path = Path.home() / "Documents/git/HED/hed-javascript"
+        if not schema_dir.exists():
+            schema_dir = None
+        if not validator_path.exists():
+            validator_path = None
 
         return HedAnnotationWorkflow(
             llm=llm,
@@ -274,11 +284,13 @@ class TestAPIEndpointIntegration:
         os.environ["REQUIRE_API_AUTH"] = "false"
         os.environ["USE_JS_VALIDATOR"] = "false"
 
-        # Set local schema paths for testing (override Docker defaults)
+        # Set local schema paths for testing if available (override Docker defaults)
         schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
         validator_path = Path.home() / "Documents/git/HED/hed-javascript"
-        os.environ["HED_SCHEMA_DIR"] = str(schema_dir)
-        os.environ["HED_VALIDATOR_PATH"] = str(validator_path)
+        if schema_dir.exists():
+            os.environ["HED_SCHEMA_DIR"] = str(schema_dir)
+        if validator_path.exists():
+            os.environ["HED_VALIDATOR_PATH"] = str(validator_path)
 
         from src.api.main import app
 
