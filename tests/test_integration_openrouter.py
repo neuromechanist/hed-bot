@@ -91,8 +91,6 @@ class TestAnnotationAgentIntegration:
     @pytest.fixture
     def annotation_agent(self, test_api_key: str):
         """Create an annotation agent for testing using env-configured model."""
-        from pathlib import Path
-
         from src.agents.annotation_agent import AnnotationAgent
         from src.utils.openrouter_llm import create_openrouter_llm
 
@@ -104,12 +102,9 @@ class TestAnnotationAgentIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
-        # Use local schema directory if available, otherwise None (uses HED library default)
-        schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
-        if not schema_dir.exists():
-            schema_dir = None
-
-        return AnnotationAgent(llm=llm, schema_dir=schema_dir)
+        # Always use None to fetch schemas from GitHub via HED library
+        # This ensures tests are consistent regardless of local setup
+        return AnnotationAgent(llm=llm, schema_dir=None)
 
     @pytest.mark.asyncio
     async def test_annotation_generates_hed_tags(self, annotation_agent) -> None:
@@ -146,8 +141,6 @@ class TestEvaluationAgentIntegration:
     @pytest.fixture
     def evaluation_agent(self, test_api_key: str):
         """Create an evaluation agent for testing using env-configured model."""
-        from pathlib import Path
-
         from src.agents.evaluation_agent import EvaluationAgent
         from src.utils.openrouter_llm import create_openrouter_llm
 
@@ -159,12 +152,8 @@ class TestEvaluationAgentIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
-        # Use local schema directory if available, otherwise None
-        schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
-        if not schema_dir.exists():
-            schema_dir = None
-
-        return EvaluationAgent(llm=llm, schema_dir=schema_dir)
+        # Always use None to fetch schemas from GitHub via HED library
+        return EvaluationAgent(llm=llm, schema_dir=None)
 
     @pytest.mark.asyncio
     async def test_evaluation_returns_feedback(self, evaluation_agent) -> None:
@@ -198,8 +187,6 @@ class TestWorkflowIntegration:
     @pytest.fixture
     def workflow(self, test_api_key: str):
         """Create a workflow for testing using env-configured model."""
-        from pathlib import Path
-
         from src.agents.workflow import HedAnnotationWorkflow
         from src.utils.openrouter_llm import create_openrouter_llm
 
@@ -211,19 +198,13 @@ class TestWorkflowIntegration:
             provider=TEST_PROVIDER if TEST_PROVIDER else None,
         )
 
-        # Use local paths if available, otherwise None (uses defaults)
-        schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
-        validator_path = Path.home() / "Documents/git/HED/hed-javascript"
-        if not schema_dir.exists():
-            schema_dir = None
-        if not validator_path.exists():
-            validator_path = None
-
+        # Always use None to fetch schemas from GitHub via HED library
+        # Use Python validator (no JS validator path needed)
         return HedAnnotationWorkflow(
             llm=llm,
-            schema_dir=schema_dir,
-            validator_path=validator_path,
-            use_js_validator=False,  # Use Python validator for speed
+            schema_dir=None,
+            validator_path=None,
+            use_js_validator=False,  # Use Python validator
         )
 
     @pytest.mark.asyncio
@@ -266,7 +247,6 @@ class TestAPIEndpointIntegration:
     def client(self, test_api_key: str):
         """Create a test client for the API using env-configured models."""
         import os
-        from pathlib import Path
 
         from fastapi.testclient import TestClient
 
@@ -284,13 +264,7 @@ class TestAPIEndpointIntegration:
         os.environ["REQUIRE_API_AUTH"] = "false"
         os.environ["USE_JS_VALIDATOR"] = "false"
 
-        # Set local schema paths for testing if available (override Docker defaults)
-        schema_dir = Path.home() / "Documents/git/HED/hed-schemas/schemas_latest_json"
-        validator_path = Path.home() / "Documents/git/HED/hed-javascript"
-        if schema_dir.exists():
-            os.environ["HED_SCHEMA_DIR"] = str(schema_dir)
-        if validator_path.exists():
-            os.environ["HED_VALIDATOR_PATH"] = str(validator_path)
+        # Don't set schema paths - let API use HED library to fetch from GitHub
 
         from src.api.main import app
 
