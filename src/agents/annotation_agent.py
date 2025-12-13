@@ -131,10 +131,10 @@ Just output the HED string directly."""
         # Build prompts with complete HED rules
         system_prompt = self._build_system_prompt(vocabulary, extendable_tags)
 
-        # Build user prompt with any feedback
+        # Build user prompt with any feedback (use augmented errors with remediation for LLM)
         feedbacks = []
-        if state["validation_errors"]:
-            feedbacks.extend(state["validation_errors"])
+        if state.get("validation_errors_augmented"):
+            feedbacks.extend(state["validation_errors_augmented"])
         if state.get("evaluation_feedback") and not state.get("is_faithful"):
             feedbacks.append(f"Evaluation feedback: {state['evaluation_feedback']}")
         if state.get("assessment_feedback") and not state.get("is_complete"):
@@ -175,28 +175,34 @@ Just output the HED string directly."""
         import re
 
         # Remove markdown code blocks
-        text = re.sub(r'```(?:hed|HED)?\s*\n?', '', text)
-        text = re.sub(r'```\s*$', '', text)
+        text = re.sub(r"```(?:hed|HED)?\s*\n?", "", text)
+        text = re.sub(r"```\s*$", "", text)
 
         # Remove markdown headers
-        text = re.sub(r'^#{1,6}\s+.*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r"^#{1,6}\s+.*$", "", text, flags=re.MULTILINE)
 
         # Split by lines and find HED-like content
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
 
         # Look for lines that look like HED annotations:
         # - Contain HED keywords (Sensory-event, Agent-action, etc.)
         # - Have parentheses and commas typical of HED
         # - Don't start with explanatory words (The, Here, This, etc.)
-        hed_keywords = ['Sensory-event', 'Agent-action', 'Event', 'Visual-presentation',
-                        'Participant-response', 'Experimental-stimulus']
+        hed_keywords = [
+            "Sensory-event",
+            "Agent-action",
+            "Event",
+            "Visual-presentation",
+            "Participant-response",
+            "Experimental-stimulus",
+        ]
 
         for line in lines:
             # Skip obvious explanation lines
-            if line.lower().startswith(('the ', 'here ', 'this ', 'note:', 'corrected', 'refined')):
+            if line.lower().startswith(("the ", "here ", "this ", "note:", "corrected", "refined")):
                 continue
             # Check if line contains HED structure
-            if any(keyword in line for keyword in hed_keywords) or ('(' in line and ',' in line):
+            if any(keyword in line for keyword in hed_keywords) or ("(" in line and "," in line):
                 return line
 
         # If no clear HED line found, return the longest non-empty line

@@ -45,8 +45,10 @@ class HedAnnotationState(TypedDict):
 
     # Validation tracking
     validation_status: Literal["pending", "valid", "invalid", "max_attempts_reached"]
-    validation_errors: list[str]
-    validation_warnings: list[str]
+    validation_errors: list[str]  # Raw errors for user display
+    validation_warnings: list[str]  # Raw warnings for user display
+    validation_errors_augmented: list[str]  # Augmented errors for LLM feedback
+    validation_warnings_augmented: list[str]  # Augmented warnings for LLM feedback
     validation_attempts: int
     total_iterations: int  # Total annotation attempts
 
@@ -92,6 +94,8 @@ def create_initial_state(
         validation_status="pending",
         validation_errors=[],
         validation_warnings=[],
+        validation_errors_augmented=[],
+        validation_warnings_augmented=[],
         validation_attempts=0,
         total_iterations=0,
         evaluation_feedback="",

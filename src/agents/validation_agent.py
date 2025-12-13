@@ -68,13 +68,13 @@ class ValidationAgent:
                 self.py_validator = HedPythonValidator(schema)
             result = self.py_validator.validate(annotation)
 
-        # Extract error and warning messages
-        error_messages = [f"[{e.code}] {e.message}" for e in result.errors]
-        warning_messages = [f"[{w.code}] {w.message}" for w in result.warnings]
+        # Extract error and warning messages (raw - for user display)
+        raw_errors = [f"[{e.code}] {e.message}" for e in result.errors]
+        raw_warnings = [f"[{w.code}] {w.message}" for w in result.warnings]
 
-        # Augment with remediation guidance
+        # Augment with remediation guidance (for LLM feedback loop only)
         augmented_errors, augmented_warnings = self.error_remediator.augment_validation_errors(
-            error_messages, warning_messages
+            raw_errors, raw_warnings
         )
 
         # Determine validation status
@@ -83,7 +83,7 @@ class ValidationAgent:
 
         # IMPORTANT: Safeguard to ensure is_valid is only True when there are NO errors
         # This prevents discrepancies between is_valid flag and actual validation_errors
-        is_valid = result.is_valid and len(error_messages) == 0
+        is_valid = result.is_valid and len(raw_errors) == 0
 
         if is_valid:
             validation_status = "valid"
@@ -92,11 +92,13 @@ class ValidationAgent:
         else:
             validation_status = "invalid"
 
-        # Update state with augmented feedback
+        # Return both raw (for users) and augmented (for LLM) errors/warnings
         return {
             "validation_status": validation_status,
-            "validation_errors": augmented_errors,
-            "validation_warnings": augmented_warnings,
+            "validation_errors": raw_errors,  # Raw errors for user display
+            "validation_warnings": raw_warnings,  # Raw warnings for user display
+            "validation_errors_augmented": augmented_errors,  # For LLM feedback
+            "validation_warnings_augmented": augmented_warnings,  # For LLM feedback
             "validation_attempts": validation_attempts,
             "is_valid": is_valid,
         }

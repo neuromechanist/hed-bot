@@ -142,10 +142,12 @@ class HedAnnotationWorkflow:
         Returns:
             State update
         """
-        total_iters = state.get('total_iterations', 0) + 1
-        print(f"[WORKFLOW] Entering annotate node (validation attempt {state['validation_attempts']}, total iteration {total_iters})")
+        total_iters = state.get("total_iterations", 0) + 1
+        print(
+            f"[WORKFLOW] Entering annotate node (validation attempt {state['validation_attempts']}, total iteration {total_iters})"
+        )
         result = await self.annotation_agent.annotate(state)
-        result['total_iterations'] = total_iters  # Increment counter
+        result["total_iterations"] = total_iters  # Increment counter
         print(f"[WORKFLOW] Annotation generated: {result.get('current_annotation', '')[:100]}...")
         return result
 
@@ -158,10 +160,12 @@ class HedAnnotationWorkflow:
         Returns:
             State update
         """
-        print(f"[WORKFLOW] Entering validate node")
+        print("[WORKFLOW] Entering validate node")
         result = await self.validation_agent.validate(state)
-        print(f"[WORKFLOW] Validation result: {result.get('validation_status')}, is_valid: {result.get('is_valid')}")
-        if not result.get('is_valid'):
+        print(
+            f"[WORKFLOW] Validation result: {result.get('validation_status')}, is_valid: {result.get('is_valid')}"
+        )
+        if not result.get("is_valid"):
             print(f"[WORKFLOW] Validation errors: {result.get('validation_errors', [])}")
         return result
 
@@ -174,18 +178,22 @@ class HedAnnotationWorkflow:
         Returns:
             State update
         """
-        print(f"[WORKFLOW] Entering evaluate node")
+        print("[WORKFLOW] Entering evaluate node")
         result = await self.evaluation_agent.evaluate(state)
         print(f"[WORKFLOW] Evaluation result: is_faithful={result.get('is_faithful')}")
 
         # Set default assessment values if assessment will be skipped
-        run_assessment = state.get('run_assessment', False)
+        run_assessment = state.get("run_assessment", False)
         if not run_assessment:
-            result['is_complete'] = result.get('is_faithful', False) and state.get('is_valid', False)
-            if result['is_complete']:
-                result['assessment_feedback'] = "Annotation is valid and faithful to the original description."
+            result["is_complete"] = result.get("is_faithful", False) and state.get(
+                "is_valid", False
+            )
+            if result["is_complete"]:
+                result["assessment_feedback"] = (
+                    "Annotation is valid and faithful to the original description."
+                )
             else:
-                result['assessment_feedback'] = ""
+                result["assessment_feedback"] = ""
 
         return result
 
@@ -209,9 +217,11 @@ class HedAnnotationWorkflow:
         Returns:
             State update with summarized feedback
         """
-        print(f"[WORKFLOW] Entering summarize_feedback node")
+        print("[WORKFLOW] Entering summarize_feedback node")
         result = await self.feedback_summarizer.summarize(state)
-        print(f"[WORKFLOW] Feedback summarized: {result.get('validation_errors', [''])[0][:100] if result.get('validation_errors') else 'No feedback'}...")
+        print(
+            f"[WORKFLOW] Feedback summarized: {result.get('validation_errors_augmented', [''])[0][:100] if result.get('validation_errors_augmented') else 'No feedback'}..."
+        )
         return result
 
     def _route_after_validation(
@@ -227,13 +237,15 @@ class HedAnnotationWorkflow:
             Next node name
         """
         if state["validation_status"] == "valid":
-            print(f"[WORKFLOW] Routing to evaluate (validation passed)")
+            print("[WORKFLOW] Routing to evaluate (validation passed)")
             return "evaluate"
         elif state["validation_status"] == "max_attempts_reached":
-            print(f"[WORKFLOW] Routing to end (max validation attempts reached)")
+            print("[WORKFLOW] Routing to end (max validation attempts reached)")
             return "end"
         else:
-            print(f"[WORKFLOW] Routing to summarize_feedback (validation failed, attempts: {state['validation_attempts']}/{state['max_validation_attempts']})")
+            print(
+                f"[WORKFLOW] Routing to summarize_feedback (validation failed, attempts: {state['validation_attempts']}/{state['max_validation_attempts']})"
+            )
             return "summarize_feedback"
 
     def _route_after_evaluation(
@@ -249,9 +261,9 @@ class HedAnnotationWorkflow:
             Next node name
         """
         # Check if max total iterations reached
-        total_iters = state.get('total_iterations', 0)
-        max_iters = state.get('max_total_iterations', 10)
-        run_assessment = state.get('run_assessment', False)
+        total_iters = state.get("total_iterations", 0)
+        max_iters = state.get("max_total_iterations", 10)
+        run_assessment = state.get("run_assessment", False)
 
         if total_iters >= max_iters:
             # Only run assessment at max iterations if explicitly requested
@@ -259,25 +271,37 @@ class HedAnnotationWorkflow:
                 print(f"[WORKFLOW] Routing to assess (max total iterations {max_iters} reached)")
                 return "assess"
             else:
-                print(f"[WORKFLOW] Skipping assessment (max iterations reached, assessment not requested) - routing to END")
+                print(
+                    "[WORKFLOW] Skipping assessment (max iterations reached, assessment not requested) - routing to END"
+                )
                 return "end"
 
         if state["is_faithful"]:
             # Only run assessment if explicitly requested
             if state.get("is_valid") and run_assessment:
-                print(f"[WORKFLOW] Routing to assess (annotation is valid and faithful, assessment requested)")
+                print(
+                    "[WORKFLOW] Routing to assess (annotation is valid and faithful, assessment requested)"
+                )
                 return "assess"
             elif state.get("is_valid"):
-                print(f"[WORKFLOW] Skipping assessment (annotation is valid and faithful, assessment not requested) - routing to END")
+                print(
+                    "[WORKFLOW] Skipping assessment (annotation is valid and faithful, assessment not requested) - routing to END"
+                )
                 return "end"
             elif run_assessment:
-                print(f"[WORKFLOW] Routing to assess (annotation is faithful but has validation issues)")
+                print(
+                    "[WORKFLOW] Routing to assess (annotation is faithful but has validation issues)"
+                )
                 return "assess"
             else:
-                print(f"[WORKFLOW] Skipping assessment (has validation issues, assessment not requested) - routing to END")
+                print(
+                    "[WORKFLOW] Skipping assessment (has validation issues, assessment not requested) - routing to END"
+                )
                 return "end"
         else:
-            print(f"[WORKFLOW] Routing to summarize_feedback (annotation needs refinement, iteration {total_iters}/{max_iters})")
+            print(
+                f"[WORKFLOW] Routing to summarize_feedback (annotation needs refinement, iteration {total_iters}/{max_iters})"
+            )
             return "summarize_feedback"
 
     async def run(

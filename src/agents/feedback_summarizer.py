@@ -63,9 +63,9 @@ Be direct and actionable."""
         """
         feedback_parts = []
 
-        # Add validation errors
-        if state.get("validation_errors"):
-            errors = "\n".join(state["validation_errors"])
+        # Add validation errors (use augmented version with remediation guidance for LLM)
+        if state.get("validation_errors_augmented"):
+            errors = "\n".join(state["validation_errors_augmented"])
             feedback_parts.append(f"VALIDATION ERRORS:\n{errors}")
 
         # Add evaluation feedback
@@ -109,9 +109,11 @@ Be direct and actionable."""
         response = await self.llm.ainvoke(messages)
         summarized_feedback = response.content.strip()
 
-        # Replace verbose feedback with summary
+        # Replace verbose feedback with summary (only augmented fields for LLM, not raw for users)
         return {
-            "validation_errors": [summarized_feedback] if state.get("validation_errors") else [],
+            "validation_errors_augmented": (
+                [summarized_feedback] if state.get("validation_errors_augmented") else []
+            ),
             "evaluation_feedback": summarized_feedback if state.get("evaluation_feedback") else "",
             "assessment_feedback": summarized_feedback if state.get("assessment_feedback") else "",
         }
