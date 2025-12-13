@@ -1,6 +1,6 @@
 #!/bin/bash
 # Local development server for hed-bot
-# Usage: ./scripts/dev.sh [--no-auth] [--mock-llm]
+# Usage: ./scripts/dev.sh [--no-auth]
 
 set -e
 
@@ -19,21 +19,16 @@ echo -e "${GREEN}========================================${NC}"
 
 # Parse arguments
 NO_AUTH=false
-MOCK_LLM=false
 for arg in "$@"; do
     case $arg in
         --no-auth)
             NO_AUTH=true
-            ;;
-        --mock-llm)
-            MOCK_LLM=true
             ;;
         --help|-h)
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --no-auth    Disable API key authentication"
-            echo "  --mock-llm   Use mock LLM (no API calls)"
             echo "  --help       Show this help message"
             exit 0
             ;;
@@ -63,11 +58,6 @@ fi
 if [ "$NO_AUTH" = true ]; then
     export REQUIRE_API_AUTH=false
     echo -e "${YELLOW}API authentication disabled${NC}"
-fi
-
-if [ "$MOCK_LLM" = true ]; then
-    # TODO: Implement mock LLM mode
-    echo -e "${YELLOW}Mock LLM mode not yet implemented${NC}"
 fi
 
 # Check for required environment variables
