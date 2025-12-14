@@ -113,7 +113,7 @@ async def process_feedback_file(
 
             # Save processed feedback
             if not dry_run:
-                output_dir = Path("bug_reports/processed")
+                output_dir = Path("feedback/processed")
                 save_processed_feedback(record, result, output_dir)
 
         except Exception as e:

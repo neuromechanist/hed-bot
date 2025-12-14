@@ -42,13 +42,13 @@ jobs:
       - name: Find new feedback files
         id: feedback
         run: |
-          # Get list of new/modified files in feedback/
+          # Get list of new/modified files in feedback/unprocessed/
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # For manual runs, process all unprocessed files
-            FILES=$(find feedback -name "*.jsonl" -o -name "*.json" | head -20)
+            FILES=$(find feedback/unprocessed -name "*.jsonl" -o -name "*.json" 2>/dev/null | head -20)
           else
             # For push events, only process newly added files
-            FILES=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- 'feedback/*.jsonl' 'feedback/*.json' 2>/dev/null || echo "")
+            FILES=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- 'feedback/unprocessed/*.jsonl' 'feedback/unprocessed/*.json' 2>/dev/null || echo "")
           fi
 
           if [ -z "$FILES" ]; then
@@ -85,18 +85,18 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          # Move processed files
-          for file in feedback/*.jsonl feedback/*.json; do
+          # Move processed files from unprocessed to processed
+          for file in feedback/unprocessed/*.jsonl feedback/unprocessed/*.json; do
             if [ -f "$file" ]; then
-              mv "$file" bug_reports/processed/
+              mv "$file" feedback/processed/
             fi
           done
 
           # Check if there are changes to commit
-          if git diff --quiet bug_reports/; then
+          if git diff --quiet feedback/; then
             echo "No changes to commit"
           else
-            git add bug_reports/
-            git commit -m "Move processed feedback to bug_reports/"
+            git add feedback/
+            git commit -m "Move processed feedback"
             git push
           fi

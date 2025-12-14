@@ -642,9 +642,9 @@ async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
             "user_comment": request.user_comment,
         }
 
-        # Save to feedback directory (always save for backup/audit)
-        feedback_dir = Path("feedback")
-        feedback_dir.mkdir(exist_ok=True)
+        # Save to feedback/unprocessed directory (always save for backup/audit)
+        feedback_dir = Path("feedback/unprocessed")
+        feedback_dir.mkdir(parents=True, exist_ok=True)
 
         filename = f"feedback-{timestamp.replace(':', '-').replace('.', '-')}.jsonl"
         filepath = feedback_dir / filename
@@ -703,7 +703,7 @@ async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
                 processing_result = await agent.process_and_execute(record, dry_run=False)
 
                 # Save processed result
-                save_processed_feedback(record, processing_result, Path("bug_reports/processed"))
+                save_processed_feedback(record, processing_result, Path("feedback/processed"))
 
                 # Remove the original feedback file since it's been processed
                 filepath.unlink(missing_ok=True)
