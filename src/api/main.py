@@ -235,6 +235,9 @@ app = FastAPI(
 # Development: Allow all localhost ports for easy local testing
 allowed_origins = [
     "https://hed-bot.pages.dev",  # Production frontend
+    "https://develop.hed-bot.pages.dev",  # Development frontend
+    "https://hed-bot-api.shirazi-10f.workers.dev",  # Production Worker proxy
+    "https://hed-bot-dev-api.shirazi-10f.workers.dev",  # Development Worker proxy
 ]
 
 # Add common localhost ports for development

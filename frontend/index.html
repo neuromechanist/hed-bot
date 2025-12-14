@@ -1586,15 +1586,7 @@ Example: A red circle appears on the left side of the screen and the participant
                 feedbackBtn.innerHTML = '📧 Provide Feedback';
                 feedbackBtn.disabled = false;
 
-                // Create payload for email fallback
-                const isImageMode = lastImageData !== null;
-                const feedbackPayload = {
-                    type: isImageMode ? 'image' : 'text',
-                    description: lastInputDescription,
-                    annotation: lastResultData.annotation,
-                    is_valid: lastResultData.is_valid,
-                    user_comment: ''
-                };
+                // Use the already-created payload (includes user_comment)
                 fallbackToEmail(feedbackPayload, isImageMode);
             }
         }
