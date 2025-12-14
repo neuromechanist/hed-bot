@@ -116,14 +116,23 @@ class TestAnnotationAgentIntegration:
             schema_version="8.3.0",
         )
 
-        result = await annotation_agent.annotate(state)
+        # Retry up to 3 times in case of empty LLM response (rate limiting, etc.)
+        max_retries = 3
+        annotation = None
+        for _attempt in range(max_retries):
+            result = await annotation_agent.annotate(state)
+            assert "current_annotation" in result
+            annotation = result["current_annotation"]
+            if annotation and len(annotation) > 0:
+                break
+            # Small delay before retry
+            import asyncio
 
-        assert "current_annotation" in result
-        annotation = result["current_annotation"]
+            await asyncio.sleep(1)
 
         # Check it looks like HED (contains commas, parentheses, or HED keywords)
-        assert annotation is not None
-        assert len(annotation) > 0
+        assert annotation is not None, "Annotation is None after retries"
+        assert len(annotation) > 0, f"Empty annotation after {max_retries} retries"
         # HED annotations typically contain commas or parentheses
         has_hed_structure = "," in annotation or "(" in annotation
         # Or contain common HED tags
