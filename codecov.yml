@@ -43,9 +43,9 @@ flags:
     paths:
       - src/
     carryforward: true
-  combined:
+  integration:
     paths:
       - src/
     carryforward: true
-    # Combined tests (unit + integration) run on push to main/develop
-    # This gives the most accurate coverage picture
+    # Integration tests run less frequently (only on merge)
+    # so carry forward previous results
