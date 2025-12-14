@@ -647,8 +647,6 @@ async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
         filepath = feedback_dir / filename
 
         with open(filepath, "w") as f:
-            import json
-
             f.write(json.dumps(feedback_record) + "\n")
 
         # Log the feedback submission
