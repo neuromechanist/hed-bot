@@ -246,7 +246,9 @@ class TestGitHubClientIntegration:
             assert issue.item_type == "issue"
             assert issue.number > 0
             assert issue.title
-            assert issue.url.startswith("https://github.com")
+            parsed_url = urlparse(issue.url)
+            assert parsed_url.scheme in ("http", "https")
+            assert parsed_url.hostname == "github.com"
 
     @pytest.mark.asyncio
     async def test_get_open_pull_requests(self, github_client):
