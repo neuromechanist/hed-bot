@@ -208,6 +208,10 @@ class FeedbackRequest(BaseModel):
         description="Feedback type",
         examples=["text", "image"],
     )
+    version: str | None = Field(
+        default=None,
+        description="App version that generated the annotation",
+    )
     description: str | None = Field(
         default=None,
         description="Original input description (for text mode)",
