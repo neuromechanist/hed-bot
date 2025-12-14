@@ -82,6 +82,18 @@ markers = [
 ]
 asyncio_mode = "auto"
 
+[tool.coverage.run]
+omit = [
+    "src/utils/hed_rules.py",  # Just a string constant, no logic to test
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true

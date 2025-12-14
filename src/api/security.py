@@ -104,16 +104,17 @@ class APIKeyAuth:
 
         # Verify API key
         if not self.verify_api_key(api_key):
-            logger.warning(
-                f"Request rejected: Invalid API key (key hash: {self._hash_key(api_key)[:8]}...)"
-            )
+            # Log only first 8 chars for debugging without revealing full key
+            key_prefix = api_key[:8] if len(api_key) > 8 else api_key[:4]
+            logger.warning(f"Request rejected: Invalid API key (prefix: {key_prefix}...)")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key",
                 headers={"WWW-Authenticate": "ApiKey"},
             )
 
-        logger.info(f"Request authenticated with API key (hash: {self._hash_key(api_key)[:8]}...)")
+        key_prefix = api_key[:8] if len(api_key) > 8 else api_key[:4]
+        logger.info(f"Request authenticated with API key (prefix: {key_prefix}...)")
         return api_key
 
 

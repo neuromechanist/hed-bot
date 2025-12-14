@@ -431,6 +431,8 @@ class TestAPIEndpointIntegration:
     @pytest.fixture
     def client(self, test_api_key: str):
         """Create a test client for the API using env-configured models."""
+        import importlib
+
         from fastapi.testclient import TestClient
 
         # Set environment variables for the test BEFORE importing app
@@ -442,7 +444,9 @@ class TestAPIEndpointIntegration:
         os.environ["FEEDBACK_MODEL"] = os.getenv("FEEDBACK_MODEL", TEST_MODEL)
         if TEST_PROVIDER:
             os.environ["LLM_PROVIDER_PREFERENCE"] = TEST_PROVIDER
-        os.environ["REQUIRE_API_AUTH"] = "false"
+        # Use API key auth to avoid issues with module caching
+        os.environ["REQUIRE_API_AUTH"] = "true"
+        os.environ["API_KEYS"] = "integration-test-api-key"
         os.environ["USE_JS_VALIDATOR"] = "false"
 
         # Clear schema paths - app now handles None gracefully and fetches from GitHub
@@ -450,13 +454,25 @@ class TestAPIEndpointIntegration:
             if key in os.environ:
                 del os.environ[key]
 
-        from src.api.main import app
+        # Reload security module to pick up new env vars
+        # (needed when running after other tests that modified security state)
+        from src.api import security
 
-        with TestClient(app) as client:
+        importlib.reload(security)
+
+        # Also reload main to pick up the new security module
+        from src.api import main
+
+        importlib.reload(main)
+
+        with TestClient(main.app) as client:
             yield client
 
+    # Auth header for authenticated requests
+    AUTH_HEADERS = {"X-API-Key": "integration-test-api-key"}
+
     def test_health_endpoint(self, client) -> None:
-        """Test the health endpoint works."""
+        """Test the health endpoint works (no auth required)."""
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
@@ -472,6 +488,7 @@ class TestAPIEndpointIntegration:
                 "max_validation_attempts": 2,
                 "run_assessment": False,
             },
+            headers=self.AUTH_HEADERS,
         )
 
         # Check response structure (may fail validation but should return result)
