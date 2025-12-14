@@ -596,22 +596,18 @@ async def validate(
 
 
 @app.post("/feedback", response_model=FeedbackResponse)
-async def submit_feedback(
-    request: FeedbackRequest, api_key: str = Depends(api_key_auth)
-) -> FeedbackResponse:
+async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
     """Submit user feedback about an annotation.
 
-    Requires API key authentication via X-API-Key header.
+    This endpoint is public (no authentication required) to allow feedback
+    from frontend and CLI users without requiring API keys.
 
-    The feedback is saved as a JSONL file in the feedback/ directory.
-    A CI workflow will process the feedback and either:
-    - Add it as a comment to an existing similar issue
-    - Create a new GitHub issue if it's a novel bug/feature
-    - Archive it for manual review
+    The feedback is saved and optionally processed immediately if GITHUB_TOKEN
+    is available in the environment. Otherwise, feedback is saved for later
+    processing via CI workflow.
 
     Args:
         request: Feedback submission with annotation data and user comment
-        api_key: API key for authentication (injected by dependency)
 
     Returns:
         FeedbackResponse with feedback ID and status
@@ -643,7 +639,7 @@ async def submit_feedback(
             "user_comment": request.user_comment,
         }
 
-        # Save to feedback directory
+        # Save to feedback directory (always save for backup/audit)
         feedback_dir = Path("feedback")
         feedback_dir.mkdir(exist_ok=True)
 
@@ -661,10 +657,87 @@ async def submit_feedback(
             data={"feedback_id": feedback_id, "type": request.type},
         )
 
+        # Try to process immediately if GitHub token and OpenRouter key are available
+        processing_result = None
+        github_token = os.getenv("GITHUB_TOKEN")
+        openrouter_key = os.getenv("OPENROUTER_API_KEY") or os.getenv(
+            "OPENROUTER_API_KEY_FOR_TESTING"
+        )
+
+        if github_token and openrouter_key:
+            try:
+                from src.agents.feedback_triage_agent import (
+                    FeedbackRecord as FeedbackRecordModel,
+                )
+                from src.agents.feedback_triage_agent import (
+                    FeedbackTriageAgent,
+                    save_processed_feedback,
+                )
+                from src.utils.github_client import GitHubClient
+
+                # Create feedback record model
+                record = FeedbackRecordModel.from_json(feedback_record)
+
+                # Create GitHub client
+                github_client = GitHubClient(
+                    token=github_token,
+                    owner=os.getenv("GITHUB_REPOSITORY_OWNER", "hed-standard"),
+                    repo=os.getenv("GITHUB_REPOSITORY", "hed-bot").split("/")[-1],
+                )
+
+                # Create LLM for triage
+                model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
+                provider = os.getenv("LLM_PROVIDER_PREFERENCE", "Cerebras")
+                llm = create_openrouter_llm(
+                    model=model,
+                    api_key=openrouter_key,
+                    temperature=0.1,
+                    max_tokens=1000,
+                    provider=provider if provider else None,
+                )
+
+                # Create and run triage agent
+                agent = FeedbackTriageAgent(llm=llm, github_client=github_client)
+                processing_result = await agent.process_and_execute(record, dry_run=False)
+
+                # Save processed result
+                save_processed_feedback(record, processing_result, Path("bug_reports/processed"))
+
+                # Remove the original feedback file since it's been processed
+                filepath.unlink(missing_ok=True)
+
+                audit_logger.log(
+                    event="feedback_processed",
+                    data={
+                        "feedback_id": feedback_id,
+                        "action": processing_result.get("action"),
+                        "issue_number": processing_result.get("issue_number"),
+                    },
+                )
+
+            except Exception as e:
+                # Log error but don't fail the request - feedback is still saved
+                audit_logger.log(
+                    event="feedback_processing_error",
+                    data={"feedback_id": feedback_id, "error": str(e)},
+                )
+
+        # Build response message
+        if processing_result:
+            action = processing_result.get("action", "unknown")
+            if action == "create_issue":
+                message = f"Thank you! Your feedback has been submitted as issue #{processing_result.get('issue_number')}."
+            elif action == "comment":
+                message = f"Thank you! Your feedback has been added to existing issue #{processing_result.get('issue_number')}."
+            else:
+                message = "Thank you for your feedback! It has been archived for review."
+        else:
+            message = "Thank you for your feedback! It will be reviewed and processed."
+
         return FeedbackResponse(
             success=True,
             feedback_id=feedback_id,
-            message="Thank you for your feedback! It will be reviewed and processed.",
+            message=message,
         )
 
     except Exception as e:
