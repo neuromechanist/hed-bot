@@ -238,7 +238,7 @@ class TestTriageResult:
         data = result.to_dict()
 
         assert data["similar_item_number"] == 10
-        assert "github.com" in data["similar_item_url"]
+        assert data["similar_item_url"] == "https://github.com/test/repo/issues/10"
 
 
 class TestLoadFeedbackFile:
