@@ -310,38 +310,6 @@ def create_test_request(
         A Request-like object for testing
     """
 
-    class TestScope:
-        """Minimal scope for testing."""
-
-        def __init__(self):
-            self.type = "http"
-            self.method = method
-            self.path = path
-            self.headers = Headers(headers or {})
-
-        def __getitem__(self, key):
-            if key == "type":
-                return self.type
-            if key == "method":
-                return self.method
-            if key == "path":
-                return self.path
-            if key == "headers":
-                return [(k.encode(), v.encode()) for k, v in (headers or {}).items()]
-            if key == "query_string":
-                return b""
-            if key == "root_path":
-                return ""
-            if key == "app":
-                return None
-            raise KeyError(key)
-
-        def get(self, key, default=None):
-            try:
-                return self[key]
-            except KeyError:
-                return default
-
     class TestClient:
         """Minimal client for testing."""
 
