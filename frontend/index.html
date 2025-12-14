@@ -1513,15 +1513,19 @@ Example: A red circle appears on the left side of the screen and the participant
                 return;
             }
 
+            // Declare variables outside try block so they're accessible in catch
+            let isImageMode = false;
+            let feedbackPayload = null;
+
             try {
                 // Determine if this is text or image mode
-                const isImageMode = lastImageData !== null;
+                isImageMode = lastImageData !== null;
 
                 // Prompt for optional user comment
                 const userComment = prompt('Optional: Add your feedback or comments about this annotation:');
 
                 // Create feedback request payload
-                const feedbackPayload = {
+                feedbackPayload = {
                     type: isImageMode ? 'image' : 'text',
                     version: appVersion || 'unknown',
                     annotation: lastResultData.annotation,
@@ -1586,8 +1590,12 @@ Example: A red circle appears on the left side of the screen and the participant
                 feedbackBtn.innerHTML = '📧 Provide Feedback';
                 feedbackBtn.disabled = false;
 
-                // Use the already-created payload (includes user_comment)
-                fallbackToEmail(feedbackPayload, isImageMode);
+                // Fall back to email with the payload (if available)
+                if (feedbackPayload) {
+                    fallbackToEmail(feedbackPayload, isImageMode);
+                } else {
+                    alert('Failed to prepare feedback. Please try again.');
+                }
             }
         }
 
@@ -1595,11 +1603,13 @@ Example: A red circle appears on the left side of the screen and the participant
             alert('Could not submit feedback to server. Opening email as fallback...');
 
             const jsonContent = JSON.stringify(feedbackPayload, null, 2);
+            const userComment = feedbackPayload.user_comment || '(No comment provided)';
             const emailSubject = `[HED-BOT Feedback] ${isImageMode ? 'Image' : 'Text'} Annotation Feedback - ${new Date().toLocaleString()}`;
-            const emailBody = `Please add your feedback comments below:
+            const emailBody = `USER FEEDBACK:
+${userComment}
 
 ========================================
-YOUR COMMENTS HERE:
+ADDITIONAL COMMENTS (optional):
 
 
 ========================================
