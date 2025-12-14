@@ -95,7 +95,9 @@ jobs:
           fi
 
       - name: Upload integration coverage to Codecov
-        if: success()
+        # Always upload coverage, even if some tests fail
+        # This ensures partial coverage is still counted
+        if: always()
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
