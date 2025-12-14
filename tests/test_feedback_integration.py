@@ -212,5 +212,248 @@ class TestFeedbackTriage:
         assert "issue_url" not in result or result.get("dry_run") is True
 
 
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_SKIP_REASON = "GITHUB_TOKEN not set"
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not GITHUB_TOKEN, reason=GITHUB_SKIP_REASON)
+class TestGitHubClientIntegration:
+    """Test GitHub client with real API calls (read-only operations)."""
+
+    @pytest.fixture
+    def github_client(self):
+        """Create a GitHub client for testing."""
+        from src.utils.github_client import GitHubClient
+
+        return GitHubClient(
+            token=GITHUB_TOKEN,
+            owner="neuromechanist",
+            repo="hed-bot",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_open_issues(self, github_client):
+        """Test fetching open issues from the repository."""
+        issues = await github_client.get_open_issues(limit=5)
+
+        # Should return a list (may be empty if no open issues)
+        assert isinstance(issues, list)
+
+        # If there are issues, verify structure
+        for issue in issues:
+            assert issue.item_type == "issue"
+            assert issue.number > 0
+            assert issue.title
+            assert issue.url.startswith("https://github.com")
+
+    @pytest.mark.asyncio
+    async def test_get_open_pull_requests(self, github_client):
+        """Test fetching open pull requests from the repository."""
+        prs = await github_client.get_open_pull_requests(limit=5)
+
+        # Should return a list (may be empty if no open PRs)
+        assert isinstance(prs, list)
+
+        # If there are PRs, verify structure
+        for pr in prs:
+            assert pr.item_type == "pull_request"
+            assert pr.number > 0
+            assert pr.title
+            assert pr.url.startswith("https://github.com")
+
+    @pytest.mark.asyncio
+    async def test_get_all_open_items(self, github_client):
+        """Test fetching all open items (issues + PRs)."""
+        items = await github_client.get_all_open_items(issue_limit=3, pr_limit=3)
+
+        # Should return a list
+        assert isinstance(items, list)
+
+        # Verify all items have required fields
+        for item in items:
+            assert item.item_type in ["issue", "pull_request"]
+            assert item.number > 0
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not OPENROUTER_TEST_KEY or not GITHUB_TOKEN,
+    reason="OPENROUTER_API_KEY_FOR_TESTING or GITHUB_TOKEN not set",
+)
+class TestTriageWithGitHub:
+    """Test triage agent with real GitHub data."""
+
+    @pytest.fixture
+    def triage_agent_with_github(self):
+        """Create a triage agent with GitHub client."""
+        from src.agents.feedback_triage_agent import FeedbackTriageAgent
+        from src.utils.github_client import GitHubClient
+        from src.utils.openrouter_llm import create_openrouter_llm
+
+        model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
+        provider = os.getenv("LLM_PROVIDER_PREFERENCE", "Cerebras")
+
+        llm = create_openrouter_llm(
+            model=model,
+            api_key=OPENROUTER_TEST_KEY,
+            temperature=0.1,
+            max_tokens=1000,
+            provider=provider if provider else None,
+        )
+
+        github_client = GitHubClient(
+            token=GITHUB_TOKEN,
+            owner="neuromechanist",
+            repo="hed-bot",
+        )
+
+        return FeedbackTriageAgent(llm=llm, github_client=github_client)
+
+    @pytest.mark.asyncio
+    async def test_find_similar_items(self, triage_agent_with_github):
+        """Test finding similar items in GitHub."""
+        from src.agents.feedback_triage_agent import FeedbackRecord
+
+        record = FeedbackRecord(
+            timestamp="2025-01-01T12:00:00Z",
+            type="text",
+            version="0.5.0",
+            description="Add feedback triage feature",
+            image_description=None,
+            annotation="Event",
+            is_valid=True,
+            is_faithful=True,
+            is_complete=True,
+            validation_errors=[],
+            validation_warnings=[],
+            evaluation_feedback="",
+            assessment_feedback="",
+            user_comment="We need automated feedback processing.",
+        )
+
+        # Fetch existing items from GitHub
+        existing_items = await triage_agent_with_github.github_client.get_all_open_items(
+            issue_limit=10, pr_limit=5
+        )
+
+        # Find similar items
+        similar_result = await triage_agent_with_github.find_similar_items(record, existing_items)
+
+        # Should return a dict with similarity info
+        assert isinstance(similar_result, dict)
+        assert "has_similar" in similar_result
+
+    @pytest.mark.asyncio
+    async def test_full_triage_with_github_dry_run(self, triage_agent_with_github):
+        """Test full triage flow with GitHub integration in dry_run mode."""
+        from src.agents.feedback_triage_agent import FeedbackRecord
+
+        record = FeedbackRecord(
+            timestamp="2025-01-01T12:00:00Z",
+            type="text",
+            version="0.5.0",
+            description="Test feedback for integration testing",
+            image_description=None,
+            annotation="Event",
+            is_valid=True,
+            is_faithful=True,
+            is_complete=True,
+            validation_errors=[],
+            validation_warnings=[],
+            evaluation_feedback="Good annotation",
+            assessment_feedback="Complete",
+            user_comment="This is a test comment for integration testing.",
+        )
+
+        # Process with dry_run=True (won't create real issues)
+        result = await triage_agent_with_github.process_and_execute(record, dry_run=True)
+
+        assert result.get("dry_run") is True
+        assert "action" in result
+        assert "category" in result
+        assert "severity" in result
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not OPENROUTER_TEST_KEY, reason=SKIP_REASON)
+class TestProcessFeedbackScript:
+    """Test the process_feedback CLI script."""
+
+    @pytest.mark.asyncio
+    async def test_process_feedback_file(self, tmp_path):
+        """Test processing a feedback file."""
+        import json
+
+        from src.scripts.process_feedback import process_feedback_file
+
+        # Create a test feedback file
+        feedback_data = {
+            "timestamp": "2025-01-01T12:00:00Z",
+            "type": "text",
+            "version": "0.5.0",
+            "description": "Test event description",
+            "annotation": "Event",
+            "is_valid": True,
+            "is_faithful": True,
+            "is_complete": True,
+            "validation_errors": [],
+            "validation_warnings": [],
+            "evaluation_feedback": "Good",
+            "assessment_feedback": "Complete",
+            "user_comment": "Test feedback for CLI script.",
+        }
+
+        # Write as JSONL
+        feedback_file = tmp_path / "test_feedback.jsonl"
+        with open(feedback_file, "w") as f:
+            f.write(json.dumps(feedback_data) + "\n")
+
+        # Process with dry_run=True
+        results = await process_feedback_file(feedback_file, dry_run=True)
+
+        assert len(results) == 1
+        result = results[0]
+
+        # Should have processed successfully
+        assert "error" not in result or result.get("dry_run") is True
+        assert "action" in result
+
+    @pytest.mark.asyncio
+    async def test_process_single_json_file(self, tmp_path):
+        """Test processing a single JSON feedback file."""
+        import json
+
+        from src.scripts.process_feedback import process_feedback_file
+
+        # Create a test feedback file as JSON
+        feedback_data = {
+            "timestamp": "2025-01-01T12:00:00Z",
+            "type": "text",
+            "version": "0.5.0",
+            "description": "Another test event",
+            "annotation": "Sensory-event",
+            "is_valid": True,
+            "is_faithful": True,
+            "is_complete": True,
+            "validation_errors": [],
+            "validation_warnings": [],
+            "evaluation_feedback": "",
+            "assessment_feedback": "",
+            "user_comment": "",
+        }
+
+        # Write as JSON
+        feedback_file = tmp_path / "test_feedback.json"
+        with open(feedback_file, "w") as f:
+            json.dump(feedback_data, f)
+
+        # Process with dry_run=True
+        results = await process_feedback_file(feedback_file, dry_run=True)
+
+        assert len(results) == 1
+        assert "action" in results[0]
+
+
 # Note: API endpoint tests for /feedback are covered in test_api_endpoints.py
 # The integration tests here focus on the triage agent logic with real LLM calls
