@@ -23,6 +23,8 @@ from src.agents.workflow import HedAnnotationWorkflow
 from src.api.models import (
     AnnotationRequest,
     AnnotationResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     HealthResponse,
     ImageAnnotationRequest,
     ImageAnnotationResponse,
@@ -593,6 +595,85 @@ async def validate(
         ) from e
 
 
+@app.post("/feedback", response_model=FeedbackResponse)
+async def submit_feedback(
+    request: FeedbackRequest, api_key: str = Depends(api_key_auth)
+) -> FeedbackResponse:
+    """Submit user feedback about an annotation.
+
+    Requires API key authentication via X-API-Key header.
+
+    The feedback is saved as a JSONL file in the feedback/ directory.
+    A CI workflow will process the feedback and either:
+    - Add it as a comment to an existing similar issue
+    - Create a new GitHub issue if it's a novel bug/feature
+    - Archive it for manual review
+
+    Args:
+        request: Feedback submission with annotation data and user comment
+        api_key: API key for authentication (injected by dependency)
+
+    Returns:
+        FeedbackResponse with feedback ID and status
+    """
+    from datetime import datetime
+    from uuid import uuid4
+
+    try:
+        # Generate unique feedback ID
+        feedback_id = str(uuid4())[:8]
+        timestamp = datetime.now().isoformat()
+
+        # Create feedback record
+        feedback_record = {
+            "feedback_id": feedback_id,
+            "timestamp": timestamp,
+            "version": __version__,
+            "type": request.type,
+            "description": request.description,
+            "image_description": request.image_description,
+            "annotation": request.annotation,
+            "is_valid": request.is_valid,
+            "is_faithful": request.is_faithful,
+            "is_complete": request.is_complete,
+            "validation_errors": request.validation_errors,
+            "validation_warnings": request.validation_warnings,
+            "evaluation_feedback": request.evaluation_feedback,
+            "assessment_feedback": request.assessment_feedback,
+            "user_comment": request.user_comment,
+        }
+
+        # Save to feedback directory
+        feedback_dir = Path("feedback")
+        feedback_dir.mkdir(exist_ok=True)
+
+        filename = f"feedback-{timestamp.replace(':', '-').replace('.', '-')}.jsonl"
+        filepath = feedback_dir / filename
+
+        with open(filepath, "w") as f:
+            import json
+
+            f.write(json.dumps(feedback_record) + "\n")
+
+        # Log the feedback submission
+        audit_logger.log(
+            event="feedback_submitted",
+            data={"feedback_id": feedback_id, "type": request.type},
+        )
+
+        return FeedbackResponse(
+            success=True,
+            feedback_id=feedback_id,
+            message="Thank you for your feedback! It will be reviewed and processed.",
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save feedback: {str(e)}",
+        ) from e
+
+
 @app.get("/version")
 async def get_version():
     """Get API version information.
@@ -622,6 +703,7 @@ async def root():
             "POST /annotate-from-image": "Generate HED annotation from image",
             "POST /annotate/stream": "Generate HED annotation with streaming",
             "POST /validate": "Validate HED annotation string",
+            "POST /feedback": "Submit user feedback about annotation",
             "GET /health": "Health check",
             "GET /version": "Get version information",
         },
