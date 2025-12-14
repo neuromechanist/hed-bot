@@ -2,7 +2,6 @@
 
 import pytest
 from fastapi import HTTPException
-from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from src.api.security import (
