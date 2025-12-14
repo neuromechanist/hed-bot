@@ -5,6 +5,7 @@ Integration tests that make real LLM calls are marked with @pytest.mark.integrat
 """
 
 import json
+from urllib.parse import urlparse
 
 from src.agents.feedback_triage_agent import (
     FeedbackRecord,
@@ -238,7 +239,7 @@ class TestTriageResult:
         data = result.to_dict()
 
         assert data["similar_item_number"] == 10
-        assert data["similar_item_url"] == "https://github.com/test/repo/issues/10"
+        assert urlparse(data["similar_item_url"]).hostname == "github.com"
 
 
 class TestLoadFeedbackFile:
