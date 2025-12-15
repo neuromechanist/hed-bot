@@ -12,12 +12,12 @@
 #   --env ENV       Environment (prod|dev), default: prod
 #
 # Setup as cron job (check every hour):
-#   0 * * * * /path/to/deploy/auto-update.sh >> /var/log/hed-bot/auto-update.log 2>&1
+#   0 * * * * /path/to/deploy/auto-update.sh >> /var/log/hedit/auto-update.log 2>&1
 
 ##### Configuration
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_FILE="${LOG_FILE:-/var/log/hed-bot/auto-update.log}"
-LOCK_FILE="/tmp/hed-bot-update.lock"
+LOG_FILE="${LOG_FILE:-/var/log/hedit/auto-update.log}"
+LOCK_FILE="/tmp/hedit-update.lock"
 
 # Default values
 CHECK_ONLY=false
@@ -48,13 +48,13 @@ done
 
 # Set environment-specific variables
 if [ "$ENVIRONMENT" = "dev" ]; then
-    IMAGE_NAME="hed-bot-dev:latest"
-    CONTAINER_NAME="hed-bot-dev"
-    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:dev"
+    IMAGE_NAME="hedit-dev:latest"
+    CONTAINER_NAME="hedit-dev"
+    REGISTRY_IMAGE="ghcr.io/annotation-garden/hedit:dev"
 else
-    IMAGE_NAME="hed-bot:latest"
-    CONTAINER_NAME="hed-bot"
-    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:latest"
+    IMAGE_NAME="hedit:latest"
+    CONTAINER_NAME="hedit"
+    REGISTRY_IMAGE="ghcr.io/annotation-garden/hedit:latest"
 fi
 
 ##### Functions
@@ -159,7 +159,7 @@ deploy_update() {
     docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
     # Create persistent feedback directory
-    FEEDBACK_DIR="/var/lib/hed-bot/${CONTAINER_NAME}/feedback"
+    FEEDBACK_DIR="/var/lib/hedit/${CONTAINER_NAME}/feedback"
     mkdir -p "${FEEDBACK_DIR}/unprocessed" "${FEEDBACK_DIR}/processed" 2>/dev/null || true
     log "Feedback directory: ${FEEDBACK_DIR}"
 
@@ -170,7 +170,7 @@ deploy_update() {
         --restart unless-stopped \
         -p "127.0.0.1:${HOST_PORT}:38427" \
         ${ENV_ARGS} \
-        -v /var/log/hed-bot:/var/log/hed-bot \
+        -v /var/log/hedit:/var/log/hedit \
         -v "${FEEDBACK_DIR}:/app/feedback" \
         "$REGISTRY_IMAGE"
 
@@ -210,7 +210,7 @@ send_notification() {
 
 ##### Main execution
 log "========================================="
-log "HED-BOT Auto-Update Check"
+log "HEDit Auto-Update Check"
 log "Environment: $ENVIRONMENT"
 log "========================================="
 
@@ -222,7 +222,7 @@ trap release_lock EXIT
 if check_for_updates || [ "$FORCE_UPDATE" = true ]; then
     if [ "$CHECK_ONLY" = true ]; then
         log "Check-only mode: Update available but not deploying"
-        send_notification "HED-BOT update available for $ENVIRONMENT"
+        send_notification "HEDit update available for $ENVIRONMENT"
         exit 0
     fi
 
@@ -233,7 +233,7 @@ if check_for_updates || [ "$FORCE_UPDATE" = true ]; then
     cleanup_old_images
 
     # Send success notification
-    send_notification "HED-BOT $ENVIRONMENT successfully updated"
+    send_notification "HEDit $ENVIRONMENT successfully updated"
 
     log "========================================="
     log "Update completed successfully!"

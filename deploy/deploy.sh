@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# deploy.sh - Pull and deploy HED-BOT Docker container from GHCR
+# deploy.sh - Pull and deploy HEDit Docker container from GHCR
 # Usage: ./deploy.sh [environment]
 # Environment: 'prod' (default) or 'dev'
 
@@ -10,12 +10,12 @@ DEPLOY_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
 # Set environment-specific variables
 if [ "$ENVIRONMENT" = "dev" ]; then
-    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:dev"
-    CONTAINER_NAME="hed-bot-dev"
+    REGISTRY_IMAGE="ghcr.io/annotation-garden/hedit:dev"
+    CONTAINER_NAME="hedit-dev"
     HOST_PORT=38428
 else
-    REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:latest"
-    CONTAINER_NAME="hed-bot"
+    REGISTRY_IMAGE="ghcr.io/annotation-garden/hedit:latest"
+    CONTAINER_NAME="hedit"
     HOST_PORT=38427
 fi
 
@@ -49,7 +49,7 @@ run_container() {
     fi
 
     # Create persistent feedback directory on host
-    FEEDBACK_DIR="/var/lib/hed-bot/${CONTAINER_NAME}/feedback"
+    FEEDBACK_DIR="/var/lib/hedit/${CONTAINER_NAME}/feedback"
     mkdir -p "${FEEDBACK_DIR}/unprocessed" "${FEEDBACK_DIR}/processed" 2>/dev/null || \
         echo "Warning: Could not create ${FEEDBACK_DIR}, feedback may not persist"
 
@@ -77,7 +77,7 @@ wait_for_health() {
 
 ##### Main
 echo "========================================="
-echo "HED-BOT Deployment (GHCR)"
+echo "HEDit Deployment (GHCR)"
 echo "========================================="
 echo "Environment: ${ENVIRONMENT}"
 echo "Image: ${REGISTRY_IMAGE}"

@@ -1,12 +1,12 @@
 #!/bin/bash
 # auto-update-dev.sh - Minimal auto-update for dev channel
-# Cron: */15 * * * * /path/to/deploy/auto-update-dev.sh >> /var/log/hed-bot/auto-update-dev.log 2>&1
+# Cron: */15 * * * * /path/to/deploy/auto-update-dev.sh >> /var/log/hedit/auto-update-dev.log 2>&1
 
-REGISTRY_IMAGE="ghcr.io/neuromechanist/hed-bot:dev"
-CONTAINER_NAME="hed-bot-dev"
+REGISTRY_IMAGE="ghcr.io/annotation-garden/hedit:dev"
+CONTAINER_NAME="hedit-dev"
 HOST_PORT=38428
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOCK_FILE="/tmp/hed-bot-dev-update.lock"
+LOCK_FILE="/tmp/hedit-dev-update.lock"
 
 # Prevent concurrent runs
 [ -f "$LOCK_FILE" ] && exit 0
@@ -34,7 +34,7 @@ if [ "$RUNNING_ID" != "$NEW_ID" ]; then
     [ -f "$ENV_FILE" ] && ENV_ARGS="--env-file $ENV_FILE"
 
     # Create persistent feedback directory
-    FEEDBACK_DIR="/var/lib/hed-bot/${CONTAINER_NAME}/feedback"
+    FEEDBACK_DIR="/var/lib/hedit/${CONTAINER_NAME}/feedback"
     mkdir -p "${FEEDBACK_DIR}/unprocessed" "${FEEDBACK_DIR}/processed" 2>/dev/null || true
 
     docker run -d \
