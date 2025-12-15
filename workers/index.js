@@ -72,9 +72,12 @@ export default {
     const CONFIG = getConfig(env);
     const origin = request.headers.get('Origin');
 
-    // CORS validation - allow hedit.pages.dev, annotation.garden, and preview deployments
+    // CORS validation - allow hedit.pages.dev, hed-bot.pages.dev (legacy), annotation.garden, and preview deployments
     const isAllowedOrigin = origin === CONFIG.ALLOWED_ORIGIN ||
-                           origin?.endsWith('.hedit.pages.dev') || // Preview deployments
+                           origin === 'https://hedit.pages.dev' || // Production (new)
+                           origin?.endsWith('.hedit.pages.dev') || // Preview/develop deployments (new)
+                           origin === 'https://hed-bot.pages.dev' || // Production (legacy, until migration)
+                           origin?.endsWith('.hed-bot.pages.dev') || // Preview/develop deployments (legacy)
                            origin === 'https://annotation.garden' || // Main AGI site
                            origin?.endsWith('.annotation.garden') || // AGI subdomains
                            origin?.startsWith('http://localhost:'); // Allow localhost for dev
