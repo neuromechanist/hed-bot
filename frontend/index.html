@@ -6,7 +6,7 @@
     <title>HEDit - HED Annotation Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Cloudflare Turnstile for bot protection -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <style>
@@ -17,8 +17,8 @@
         }
 
         body {
-            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+            font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 50%, #387d6c 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -38,8 +38,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 30px 40px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-            border-bottom: 4px solid #60a5fa;
+            background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 100%);
+            border-bottom: 4px solid #E99852;
         }
 
         .header-left h1 {
@@ -51,7 +51,7 @@
         }
 
         .header-left .subtitle {
-            color: #93c5fd;
+            color: #9bc2b6;
             margin: 5px 0 0 0;
             font-size: 1em;
             font-weight: 400;
@@ -75,13 +75,13 @@
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            border: 2px solid rgba(96, 165, 250, 0.3);
+            border: 2px solid rgba(233, 152, 82, 0.3);
             transition: all 0.3s ease;
         }
 
         .logo-container:hover {
             background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(96, 165, 250, 0.5);
+            border-color: rgba(233, 152, 82, 0.5);
             transform: scale(1.05);
         }
 
@@ -119,16 +119,16 @@
         }
 
         .tab-button:hover {
-            background: rgba(30, 58, 138, 0.05);
-            color: #1e40af;
+            background: rgba(24, 74, 61, 0.05);
+            color: #184A3D;
             transform: none;
             box-shadow: none;
         }
 
         .tab-button.active {
             background: white;
-            color: #1e3a8a;
-            border-bottom-color: #1e3a8a;
+            color: #184A3D;
+            border-bottom-color: #184A3D;
         }
 
         .tab-button .tab-icon {
@@ -157,13 +157,13 @@
         }
 
         .image-upload-area:hover {
-            border-color: #3730a3;
+            border-color: #184A3D;
             background: white;
         }
 
         .image-upload-area.drag-over {
-            border-color: #1e40af;
-            background: #dbeafe;
+            border-color: #184A3D;
+            background: #e6f0ed;
         }
 
         .image-upload-icon {
@@ -298,9 +298,9 @@
 
         textarea:focus, input:focus, select:focus {
             outline: none;
-            border-color: #3730a3;
+            border-color: #184A3D;
             background: white;
-            box-shadow: 0 0 0 3px rgba(55, 48, 163, 0.1);
+            box-shadow: 0 0 0 3px rgba(24, 74, 61, 0.1);
         }
 
         .options {
@@ -311,7 +311,7 @@
         }
 
         button {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 100%);
             color: white;
             border: none;
             padding: 16px 32px;
@@ -321,14 +321,14 @@
             cursor: pointer;
             transition: all 0.3s ease;
             width: 100%;
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', 'Space Grotesk', sans-serif;
             letter-spacing: 0.3px;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(30, 58, 138, 0.4);
-            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            box-shadow: 0 12px 24px rgba(24, 74, 61, 0.4);
+            background: linear-gradient(135deg, #2A6B5A 0%, #387d6c 100%);
         }
 
         button:active {
@@ -345,7 +345,7 @@
             display: none;
             text-align: center;
             margin: 20px 0;
-            color: #3730a3;
+            color: #184A3D;
             font-weight: 600;
         }
 
@@ -357,7 +357,7 @@
             display: none;
             margin-top: 30px;
             padding: 24px;
-            background: linear-gradient(135deg, #f1f5f9 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, #f1f5f9 0%, #e6f0ed 100%);
             border-radius: 12px;
             border: 2px solid #cbd5e1;
         }
@@ -401,7 +401,7 @@
             padding: 24px;
             border-radius: 12px;
             margin: 10px 0;
-            border-left: 5px solid #3730a3;
+            border-left: 5px solid #184A3D;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
@@ -439,9 +439,9 @@
         }
 
         .status-faithful {
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            color: #1e40af;
-            border: 2px solid #3b82f6;
+            background: linear-gradient(135deg, #e6f0ed 0%, #c2d9d2 100%);
+            color: #184A3D;
+            border: 2px solid #2A6B5A;
         }
 
         .status-complete {
@@ -494,7 +494,7 @@
             z-index: 1000;
             pointer-events: none;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            border: 2px solid #3730a3;
+            border: 2px solid #184A3D;
             max-width: 300px;
             white-space: normal;
             line-height: 1.5;
@@ -564,7 +564,7 @@
         }
 
         .feedback-btn {
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            background: linear-gradient(135deg, #E99852 0%, #D17D36 100%);
             padding: 10px 24px;
             font-size: 14px;
             width: auto;
@@ -575,8 +575,8 @@
         }
 
         .feedback-btn:hover {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+            background: linear-gradient(135deg, #D17D36 0%, #c06a25 100%);
+            box-shadow: 0 8px 16px rgba(233, 152, 82, 0.3);
         }
 
         .checkbox-container {
@@ -584,7 +584,7 @@
             align-items: center;
             margin-bottom: 24px;
             padding: 16px;
-            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, #f8fafc 0%, #e6f0ed 100%);
             border-radius: 10px;
             border: 2px solid #cbd5e1;
         }
@@ -594,7 +594,7 @@
             height: 18px;
             margin-right: 12px;
             cursor: pointer;
-            accent-color: #3730a3;
+            accent-color: #184A3D;
         }
 
         .checkbox-container label {
@@ -614,13 +614,13 @@
         .progress-status {
             display: none;
             padding: 16px;
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            border-left: 5px solid #3b82f6;
+            background: linear-gradient(135deg, #e6f0ed 0%, #c2d9d2 100%);
+            border-left: 5px solid #184A3D;
             border-radius: 10px;
             margin: 20px 0;
             font-weight: 600;
-            color: #1e40af;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            color: #184A3D;
+            box-shadow: 0 4px 12px rgba(24, 74, 61, 0.15);
         }
 
         .progress-status.active {
@@ -653,10 +653,10 @@
         }
 
         .progress-step.completed {
-            background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
+            background: linear-gradient(135deg, #9bc2b6 0%, #74aa99 100%);
             opacity: 1;
-            color: #1e3a8a;
-            border-color: #3b82f6;
+            color: #184A3D;
+            border-color: #2A6B5A;
         }
 
         @keyframes pulse {
@@ -674,14 +674,14 @@
         }
 
         .footer a {
-            color: #3730a3;
+            color: #184A3D;
             text-decoration: none;
             font-weight: 600;
             transition: color 0.3s ease;
         }
 
         .footer a:hover {
-            color: #1e40af;
+            color: #2A6B5A;
             text-decoration: underline;
         }
 
@@ -794,9 +794,9 @@
                 <p class="subtitle">Multi-Agent System for HED Annotation Generation</p>
             </div>
             <div class="header-right">
-                <a href="https://hedtags.org" target="_blank" rel="noopener noreferrer" class="logo-link" title="Visit HED Tags">
+                <a href="https://annotation.garden" target="_blank" rel="noopener noreferrer" class="logo-link" title="Visit Annotation Garden">
                     <div class="logo-container">
-                        <img src="assets/HED.svg" alt="HED Logo">
+                        <img src="assets/AGI-square.svg" alt="Annotation Garden Logo">
                     </div>
                 </a>
             </div>
@@ -1259,7 +1259,7 @@ Example: A red circle appears on the left side of the screen and the participant
                 descriptionBox = document.createElement('div');
                 descriptionBox.id = 'imageDescriptionBox';
                 descriptionBox.className = 'annotation-box';
-                descriptionBox.style.borderLeftColor = '#2563eb';
+                descriptionBox.style.borderLeftColor = '#E99852';
                 annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
             }
 
