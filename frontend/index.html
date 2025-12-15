@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HED-BOT - HED Annotation Generator</title>
+    <title>HEDit - HED Annotation Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Cloudflare Turnstile for bot protection -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <style>
@@ -17,8 +17,8 @@
         }
 
         body {
-            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+            font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f5f5f4 0%, #e7e5e4 50%, #d6d3d1 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -28,9 +28,10 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 32px rgba(24, 74, 61, 0.12);
             padding: 0;
             overflow: hidden;
+            border: 1px solid rgba(24, 74, 61, 0.1);
         }
 
         .header {
@@ -38,8 +39,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 30px 40px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-            border-bottom: 4px solid #60a5fa;
+            background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 100%);
+            border-bottom: 4px solid #E99852;
         }
 
         .header-left h1 {
@@ -51,7 +52,7 @@
         }
 
         .header-left .subtitle {
-            color: #93c5fd;
+            color: #9bc2b6;
             margin: 5px 0 0 0;
             font-size: 1em;
             font-weight: 400;
@@ -69,34 +70,32 @@
         }
 
         .logo-container {
-            width: 120px;
+            width: 80px;
             height: auto;
             padding: 8px;
-            border-radius: 8px;
+            border-radius: 12px;
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(96, 165, 250, 0.3);
+            border: 1px solid rgba(233, 152, 82, 0.3);
             transition: all 0.3s ease;
         }
 
         .logo-container:hover {
             background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(96, 165, 250, 0.5);
-            transform: scale(1.05);
+            border-color: rgba(233, 152, 82, 0.5);
+            transform: scale(1.02);
         }
 
         .logo-container img {
             width: 100%;
             height: auto;
             display: block;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
         }
 
         /* Workflow Tabs */
         .workflow-tabs {
             display: flex;
-            background: #f1f5f9;
-            border-bottom: 3px solid #e2e8f0;
+            background: #f5f5f4;
+            border-bottom: 3px solid #e7e5e4;
             padding: 0 40px;
             gap: 8px;
         }
@@ -108,7 +107,7 @@
             background: transparent;
             border: none;
             border-radius: 0;
-            color: #64748b;
+            color: #57534e;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
@@ -119,16 +118,16 @@
         }
 
         .tab-button:hover {
-            background: rgba(30, 58, 138, 0.05);
-            color: #1e40af;
+            background: rgba(24, 74, 61, 0.05);
+            color: #184A3D;
             transform: none;
             box-shadow: none;
         }
 
         .tab-button.active {
             background: white;
-            color: #1e3a8a;
-            border-bottom-color: #1e3a8a;
+            color: #184A3D;
+            border-bottom-color: #184A3D;
         }
 
         .tab-button .tab-icon {
@@ -146,40 +145,40 @@
 
         /* Image Upload Styles */
         .image-upload-area {
-            border: 3px dashed #cbd5e1;
+            border: 3px dashed #d6d3d1;
             border-radius: 12px;
             padding: 40px;
             text-align: center;
-            background: #f8fafc;
+            background: #fafaf9;
             transition: all 0.3s ease;
             cursor: pointer;
             margin-bottom: 24px;
         }
 
         .image-upload-area:hover {
-            border-color: #3730a3;
+            border-color: #184A3D;
             background: white;
         }
 
         .image-upload-area.drag-over {
-            border-color: #1e40af;
-            background: #dbeafe;
+            border-color: #184A3D;
+            background: #e6f0ed;
         }
 
         .image-upload-icon {
             font-size: 48px;
             margin-bottom: 16px;
-            color: #94a3b8;
+            color: #78716c;
         }
 
         .image-upload-area p {
-            color: #64748b;
+            color: #57534e;
             margin: 8px 0;
         }
 
         .image-upload-area .supported-formats {
             font-size: 13px;
-            color: #94a3b8;
+            color: #78716c;
             margin-top: 12px;
         }
 
@@ -189,7 +188,7 @@
             padding: 24px;
             background: white;
             border-radius: 12px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #e7e5e4;
         }
 
         .image-preview.active {
@@ -210,7 +209,7 @@
             flex-wrap: wrap;
             margin-bottom: 16px;
             font-size: 14px;
-            color: #64748b;
+            color: #57534e;
         }
 
         .image-metadata-item {
@@ -220,7 +219,7 @@
         }
 
         .image-metadata-item strong {
-            color: #334155;
+            color: #292524;
         }
 
         .clear-image-btn {
@@ -247,7 +246,7 @@
 
         .prompt-help {
             font-size: 12px;
-            color: #64748b;
+            color: #57534e;
             font-weight: normal;
             margin-left: auto;
         }
@@ -264,7 +263,7 @@
             display: block;
             margin-bottom: 10px;
             font-weight: 600;
-            color: #1e293b;
+            color: #1c1917;
             font-size: 0.95em;
             letter-spacing: 0.3px;
         }
@@ -273,12 +272,12 @@
             width: 100%;
             height: 52px;
             padding: 0 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #e7e5e4;
             border-radius: 10px;
             font-size: 15px;
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', 'Space Grotesk', sans-serif;
             transition: all 0.3s ease;
-            background: #f8fafc;
+            background: #fafaf9;
             line-height: 1.5;
         }
 
@@ -286,21 +285,21 @@
             width: 100%;
             min-height: 140px;
             padding: 14px 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid #e7e5e4;
             border-radius: 10px;
             font-size: 15px;
             font-family: 'JetBrains Mono', monospace;
             transition: all 0.3s ease;
-            background: #f8fafc;
+            background: #fafaf9;
             resize: vertical;
             line-height: 1.6;
         }
 
         textarea:focus, input:focus, select:focus {
             outline: none;
-            border-color: #3730a3;
+            border-color: #184A3D;
             background: white;
-            box-shadow: 0 0 0 3px rgba(55, 48, 163, 0.1);
+            box-shadow: 0 0 0 3px rgba(24, 74, 61, 0.1);
         }
 
         .options {
@@ -311,7 +310,7 @@
         }
 
         button {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 100%);
             color: white;
             border: none;
             padding: 16px 32px;
@@ -321,14 +320,14 @@
             cursor: pointer;
             transition: all 0.3s ease;
             width: 100%;
-            font-family: 'Space Grotesk', sans-serif;
+            font-family: 'Inter', 'Space Grotesk', sans-serif;
             letter-spacing: 0.3px;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(30, 58, 138, 0.4);
-            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            box-shadow: 0 12px 24px rgba(24, 74, 61, 0.4);
+            background: linear-gradient(135deg, #2A6B5A 0%, #387d6c 100%);
         }
 
         button:active {
@@ -345,7 +344,7 @@
             display: none;
             text-align: center;
             margin: 20px 0;
-            color: #3730a3;
+            color: #184A3D;
             font-weight: 600;
         }
 
@@ -357,9 +356,9 @@
             display: none;
             margin-top: 30px;
             padding: 24px;
-            background: linear-gradient(135deg, #f1f5f9 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, #fafaf9 0%, #f0eeec 100%);
             border-radius: 12px;
-            border: 2px solid #cbd5e1;
+            border: 2px solid #e7e5e4;
         }
 
         .result-section.active {
@@ -367,14 +366,14 @@
         }
 
         .result-section h2 {
-            color: #1e293b;
+            color: #1c1917;
             margin-bottom: 20px;
             font-size: 1.8em;
             font-weight: 700;
         }
 
         .result-section h3 {
-            color: #334155;
+            color: #292524;
             margin-bottom: 12px;
             margin-top: 20px;
             font-size: 1.2em;
@@ -401,17 +400,17 @@
             padding: 24px;
             border-radius: 12px;
             margin: 10px 0;
-            border-left: 5px solid #3730a3;
+            border-left: 5px solid #184A3D;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
         .annotation-text {
             font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 14px;
-            color: #1e293b;
+            color: #1c1917;
             word-break: break-word;
             line-height: 1.8;
-            background: #f8fafc;
+            background: #fafaf9;
             padding: 16px;
             border-radius: 8px;
         }
@@ -439,9 +438,9 @@
         }
 
         .status-faithful {
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            color: #1e40af;
-            border: 2px solid #3b82f6;
+            background: linear-gradient(135deg, #e6f0ed 0%, #c2d9d2 100%);
+            color: #184A3D;
+            border: 2px solid #2A6B5A;
         }
 
         .status-complete {
@@ -481,7 +480,7 @@
             bottom: calc(100% + 8px);
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            background: linear-gradient(135deg, #1c1917 0%, #0f172a 100%);
             color: white;
             padding: 12px 16px;
             border-radius: 8px;
@@ -494,7 +493,7 @@
             z-index: 1000;
             pointer-events: none;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            border: 2px solid #3730a3;
+            border: 2px solid #184A3D;
             max-width: 300px;
             white-space: normal;
             line-height: 1.5;
@@ -507,7 +506,7 @@
             left: 50%;
             transform: translateX(-50%);
             border: 6px solid transparent;
-            border-top-color: #1e293b;
+            border-top-color: #1c1917;
         }
 
         .status-badge:hover .tooltip {
@@ -528,7 +527,7 @@
             white-space: pre-wrap;
             font-size: 14px;
             line-height: 1.7;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e7e5e4;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
@@ -560,11 +559,11 @@
             margin-top: 24px;
             padding: 16px;
             text-align: center;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid #e7e5e4;
         }
 
         .feedback-btn {
-            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            background: linear-gradient(135deg, #E99852 0%, #D17D36 100%);
             padding: 10px 24px;
             font-size: 14px;
             width: auto;
@@ -575,8 +574,8 @@
         }
 
         .feedback-btn:hover {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+            background: linear-gradient(135deg, #D17D36 0%, #c06a25 100%);
+            box-shadow: 0 8px 16px rgba(233, 152, 82, 0.3);
         }
 
         .checkbox-container {
@@ -584,9 +583,9 @@
             align-items: center;
             margin-bottom: 24px;
             padding: 16px;
-            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+            background: linear-gradient(135deg, #fafaf9 0%, #f0eeec 100%);
             border-radius: 10px;
-            border: 2px solid #cbd5e1;
+            border: 2px solid #e7e5e4;
         }
 
         .checkbox-container input[type="checkbox"] {
@@ -594,19 +593,19 @@
             height: 18px;
             margin-right: 12px;
             cursor: pointer;
-            accent-color: #3730a3;
+            accent-color: #184A3D;
         }
 
         .checkbox-container label {
             margin: 0;
             font-weight: 600;
             cursor: pointer;
-            color: #1e293b;
+            color: #1c1917;
         }
 
         .checkbox-help {
             font-size: 13px;
-            color: #64748b;
+            color: #57534e;
             margin-left: 30px;
             font-weight: 400;
         }
@@ -614,13 +613,13 @@
         .progress-status {
             display: none;
             padding: 16px;
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-            border-left: 5px solid #3b82f6;
+            background: linear-gradient(135deg, #e6f0ed 0%, #c2d9d2 100%);
+            border-left: 5px solid #184A3D;
             border-radius: 10px;
             margin: 20px 0;
             font-weight: 600;
-            color: #1e40af;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            color: #184A3D;
+            box-shadow: 0 4px 12px rgba(24, 74, 61, 0.15);
         }
 
         .progress-status.active {
@@ -636,7 +635,7 @@
 
         .progress-step {
             padding: 6px 14px;
-            background: #e2e8f0;
+            background: #e7e5e4;
             border-radius: 16px;
             font-size: 12px;
             opacity: 0.6;
@@ -653,10 +652,10 @@
         }
 
         .progress-step.completed {
-            background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%);
+            background: linear-gradient(135deg, #9bc2b6 0%, #74aa99 100%);
             opacity: 1;
-            color: #1e3a8a;
-            border-color: #3b82f6;
+            color: #184A3D;
+            border-color: #2A6B5A;
         }
 
         @keyframes pulse {
@@ -668,26 +667,26 @@
             text-align: center;
             padding: 20px;
             margin-top: 40px;
-            border-top: 2px solid #e2e8f0;
-            color: #64748b;
+            border-top: 2px solid #e7e5e4;
+            color: #57534e;
             font-size: 14px;
         }
 
         .footer a {
-            color: #3730a3;
+            color: #184A3D;
             text-decoration: none;
             font-weight: 600;
             transition: color 0.3s ease;
         }
 
         .footer a:hover {
-            color: #1e40af;
+            color: #2A6B5A;
             text-decoration: underline;
         }
 
         .version-info {
             font-size: 12px;
-            color: #94a3b8;
+            color: #78716c;
             margin-top: 8px;
             font-family: 'JetBrains Mono', monospace;
         }
@@ -699,7 +698,7 @@
             gap: 6px;
             margin-left: 16px;
             font-size: 12px;
-            color: #94a3b8;
+            color: #78716c;
         }
 
         .health-dot {
@@ -752,7 +751,7 @@
         .health-tooltip .health-tooltip-text {
             visibility: hidden;
             width: 200px;
-            background-color: #1e293b;
+            background-color: #1c1917;
             color: #fff;
             text-align: left;
             border-radius: 6px;
@@ -777,7 +776,7 @@
             margin-left: -5px;
             border-width: 5px;
             border-style: solid;
-            border-color: #1e293b transparent transparent transparent;
+            border-color: #1c1917 transparent transparent transparent;
         }
 
         .health-tooltip:hover .health-tooltip-text {
@@ -790,13 +789,13 @@
     <div class="container">
         <div class="header">
             <div class="header-left">
-                <h1>HED-BOT</h1>
+                <h1>HEDit</h1>
                 <p class="subtitle">Multi-Agent System for HED Annotation Generation</p>
             </div>
             <div class="header-right">
-                <a href="https://hedtags.org" target="_blank" rel="noopener noreferrer" class="logo-link" title="Visit HED Tags">
+                <a href="https://annotation.garden" target="_blank" rel="noopener noreferrer" class="logo-link" title="Visit Annotation Garden">
                     <div class="logo-container">
-                        <img src="assets/HED.svg" alt="HED Logo">
+                        <img src="assets/AGI-square.svg" alt="Annotation Garden Logo">
                     </div>
                 </a>
             </div>
@@ -942,10 +941,10 @@ Example: A red circle appears on the left side of the screen and the participant
             <div id="assessmentSection"></div>
 
             <div class="feedback-section">
-                <button class="feedback-btn" onclick="provideFeedback()" title="Submit feedback about this annotation to help improve HED-BOT">
+                <button class="feedback-btn" onclick="provideFeedback()" title="Submit feedback about this annotation to help improve HEDit">
                     💬 Provide Feedback
                 </button>
-                <p style="color: #64748b; font-size: 12px; margin-top: 8px;">
+                <p style="color: #57534e; font-size: 12px; margin-top: 8px;">
                     Found an issue or have suggestions? Click to send feedback.
                 </p>
             </div>
@@ -1259,7 +1258,7 @@ Example: A red circle appears on the left side of the screen and the participant
                 descriptionBox = document.createElement('div');
                 descriptionBox.id = 'imageDescriptionBox';
                 descriptionBox.className = 'annotation-box';
-                descriptionBox.style.borderLeftColor = '#2563eb';
+                descriptionBox.style.borderLeftColor = '#E99852';
                 annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
             }
 
@@ -1570,7 +1569,7 @@ Example: A red circle appears on the left side of the screen and the participant
 
                     // Show success message
                     setTimeout(() => {
-                        alert('Thank you for your feedback! It has been recorded and will help improve HED-BOT.');
+                        alert('Thank you for your feedback! It has been recorded and will help improve HEDit.');
                         feedbackBtn.innerHTML = originalBtnText;
                         feedbackBtn.style.background = '';
                         feedbackBtn.disabled = false;
@@ -1604,7 +1603,7 @@ Example: A red circle appears on the left side of the screen and the participant
 
             const jsonContent = JSON.stringify(feedbackPayload, null, 2);
             const userComment = feedbackPayload.user_comment || '(No comment provided)';
-            const emailSubject = `[HED-BOT Feedback] ${isImageMode ? 'Image' : 'Text'} Annotation Feedback - ${new Date().toLocaleString()}`;
+            const emailSubject = `[HEDit Feedback] ${isImageMode ? 'Image' : 'Text'} Annotation Feedback - ${new Date().toLocaleString()}`;
             const emailBody = `USER FEEDBACK:
 ${userComment}
 
