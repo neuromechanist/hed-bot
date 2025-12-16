@@ -4,20 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hedit"
-version = "0.6.1-dev"
+version = "0.6.1-alpha"
 description = "Multi-agent system for HED annotation generation and validation"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
-    {name = "Yahya", email = "yahya@example.com"}
+    {name = "Annotation Garden Initiative", email = "info@annotation.garden"}
 ]
 keywords = ["hed", "annotation", "neuroscience", "bids", "cli"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
