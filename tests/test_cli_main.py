@@ -3,12 +3,15 @@
 import os
 from unittest.mock import patch
 
+# Set NO_COLOR before importing app to disable Rich formatting
+os.environ["NO_COLOR"] = "1"
+os.environ["TERM"] = "dumb"
+os.environ["COLUMNS"] = "200"  # Wide terminal to prevent truncation
+
 from typer.testing import CliRunner
 
 from src.cli.main import app
 
-# Set NO_COLOR to disable Rich formatting and prevent terminal width issues in CI
-os.environ["NO_COLOR"] = "1"
 runner = CliRunner()
 
 
