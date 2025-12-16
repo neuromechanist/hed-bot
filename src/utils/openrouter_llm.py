@@ -25,9 +25,12 @@ def create_openrouter_llm(
     """
     # OpenRouter requires these headers for app identification
     # Using default_headers (not model_kwargs) to ensure headers are sent
+    # HTTP-Referer: Primary URL for app identification in OpenRouter rankings
+    # X-Title: Display name in OpenRouter analytics
+    # Note: favicon_url, main_url, description are configured in OpenRouter Dashboard
     default_headers = {
-        "HTTP-Referer": "https://github.com/Annotation-Garden/hedit",
-        "X-Title": "HEDit",
+        "HTTP-Referer": "https://annotation.garden/hedit",
+        "X-Title": "HEDit - HED Annotation Generator",
     }
 
     # Build extra_body for provider preference
