@@ -1,52 +1,103 @@
 # HEDit
 
+[![PyPI version](https://badge.fury.io/py/hedit.svg)](https://pypi.org/project/hedit/)
 [![Tests](https://github.com/Annotation-Garden/hedit/actions/workflows/test.yml/badge.svg)](https://github.com/Annotation-Garden/hedit/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/Annotation-Garden/hedit/graph/badge.svg?token=NbpQ38cVaM)](https://codecov.io/gh/Annotation-Garden/hedit)
 
 Multi-agent system for converting natural language event descriptions into valid HED (Hierarchical Event Descriptors) annotations. Part of the [Annotation Garden Initiative](https://annotation.garden).
 
+## Installation
+
+```bash
+pip install hedit
+```
+
+## Quick Start
+
+```bash
+# Initialize with your OpenRouter API key (get one at https://openrouter.ai)
+hedit init --api-key sk-or-v1-xxx
+
+# Generate HED annotation from natural language
+hedit annotate "participant pressed the left button with their index finger"
+
+# Annotate from an image
+hedit annotate-image stimulus.png
+
+# Validate an existing HED string
+hedit validate "Sensory-event, Visual-presentation"
+
+# Check API health
+hedit health
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `hedit init` | Configure API key and preferences |
+| `hedit annotate "text"` | Convert natural language to HED |
+| `hedit annotate-image <file>` | Generate HED from an image |
+| `hedit validate "HED-string"` | Validate a HED annotation |
+| `hedit health` | Check API status |
+| `hedit config show` | Display current configuration |
+
+### Options
+
+```bash
+# Use JSON output for scripting
+hedit annotate "red circle appears" -o json
+
+# Specify HED schema version
+hedit annotate "button press" --schema 8.3.0
+
+# Use a different API endpoint
+hedit annotate "stimulus" --api-url https://api.annotation.garden/hedit-dev
+```
+
+### Configuration
+
+Config files are stored in `~/.config/hedit/`:
+- `config.yaml` - Settings (API URL, model, schema version)
+- `credentials.yaml` - API key (stored securely)
+
 ## Features
 
-- **Multi-Agent Architecture**: Uses LangGraph to orchestrate specialized agents
-  - **Annotation Agent**: Generates HED tags using JSON schema vocabulary (short-form tags)
-  - **Validation Agent**: Validates HED compliance with detailed error feedback
-  - **Evaluation Agent**: Assesses faithfulness & suggests closest tag matches
-  - **Assessment Agent**: Identifies missing elements & dimensions
+- **Natural Language to HED**: Describe events in plain English, get valid HED annotations
+- **Image Annotation**: Annotate visual stimuli directly from image files
+- **Multi-Stage Validation**: AI agents generate, validate, evaluate, and refine annotations
+- **Bring Your Own Key**: Uses OpenRouter API; you control your LLM costs and model choice
+- **JSON Output**: Easy integration with scripts and pipelines
+- **HED Schema Support**: Works with official HED schemas (8.x)
 
-- **JSON Schema Support**: Uses official HED JSON schemas with short-form tags and extensionAllowed detection
-- **Intelligent Validation**: Multi-stage validation with feedback loops and closest match suggestions
-- **Local LLM Serving**: Uses Ollama with `gpt-oss:20b` model (20B parameters)
-- **GPU Acceleration**: Optimized for NVIDIA RTX 4090 with CUDA support
-- **Scalable**: Designed for 10-15 concurrent users
-- **Auto-Configuration**: Model automatically pulled on first Docker start
+## How It Works
+
+HEDit uses a multi-agent architecture powered by LangGraph:
+
+1. **Annotation Agent**: Generates initial HED tags from your description
+2. **Validation Agent**: Checks HED syntax and tag validity
+3. **Evaluation Agent**: Assesses faithfulness and suggests improvements
+4. **Assessment Agent**: Identifies missing elements for completeness
+
+The agents work in feedback loops, automatically refining the annotation until it passes all validation checks.
 
 ## Documentation
 
-📚 **[Full Documentation](docs/)** - Comprehensive guides for users, deployers, and developers
+- [HED Standard](https://hedtags.org) - Learn about HED annotations
+- [OpenRouter](https://openrouter.ai) - Get an API key for LLM access
+- [GitHub Issues](https://github.com/Annotation-Garden/HEDit/issues) - Report bugs or request features
 
-**Quick Links**:
-- [Usage Guide](docs/guides/usage.md) - Getting started with HEDit
-- **[Deployment Guide](DEPLOYMENT.md)** - Choose your deployment option (production, local GPU, or local dev)
-- [API Reference](docs/api/) - API documentation
-- [Development Guide](docs/development/) - Contribute to HEDit
+## Server Deployment
 
-## Deployment Options
+For running your own HEDit API server, see the deployment options below.
 
-HEDit supports multiple deployment scenarios. Choose the one that fits your needs:
+### Docker (Self-Hosted API)
+Deploy with Docker for production use with GPU acceleration.
+**See [DEPLOYMENT.md](DEPLOYMENT.md) and [deploy/README.md](deploy/README.md)**
 
-### For Production (Recommended)
-Deploy to a server or cloud platform with API key authentication, audit logging, and auto-updates.
-**→ See [DEPLOYMENT.md](DEPLOYMENT.md) and [deploy/README.md](deploy/README.md)**
-
-### For Local GPU Development
-Run completely offline with Ollama and local GPU (requires NVIDIA RTX 3090/4090+).
-**→ See [docs/deployment/docker-quickstart.md](docs/deployment/docker-quickstart.md)**
-
-### For Quick Local Testing
-Use your local Python environment with OpenRouter API (no GPU needed).
-**→ See [Local Development Setup](#local-development-setup) below**
-
-**Not sure which to choose?** See the [Deployment Decision Matrix](DEPLOYMENT.md#quick-decision-matrix)
+### Local Development
+Run the API server locally for development.
+**See [Local Development Setup](#local-development-setup) below**
 
 ## Architecture
 
