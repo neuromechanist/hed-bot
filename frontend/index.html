@@ -10,6 +10,36 @@
     <!-- Cloudflare Turnstile for bot protection -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
     <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f4;
+            --bg-tertiary: #fafaf9;
+            --bg-page: linear-gradient(135deg, #f5f5f4 0%, #e7e5e4 50%, #d6d3d1 100%);
+            --text-primary: #1c1917;
+            --text-secondary: #57534e;
+            --text-muted: #78716c;
+            --border-color: #e7e5e4;
+            --border-light: #d6d3d1;
+            --input-bg: #fafaf9;
+            --shadow-color: rgba(24, 74, 61, 0.12);
+            --shadow-light: rgba(0, 0, 0, 0.08);
+        }
+
+        html.dark {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #171717;
+            --bg-tertiary: #1a1a1a;
+            --bg-page: linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 50%, #171717 100%);
+            --text-primary: #f5f5f4;
+            --text-secondary: #a8a29e;
+            --text-muted: #78716c;
+            --border-color: #2a2a2a;
+            --border-light: #333333;
+            --input-bg: #171717;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --shadow-light: rgba(0, 0, 0, 0.3);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,20 +48,22 @@
 
         body {
             font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #f5f5f4 0%, #e7e5e4 50%, #d6d3d1 100%);
+            background: var(--bg-page);
             min-height: 100vh;
             padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background: var(--bg-primary);
             border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(24, 74, 61, 0.12);
+            box-shadow: 0 8px 32px var(--shadow-color);
             padding: 0;
             overflow: hidden;
-            border: 1px solid rgba(24, 74, 61, 0.1);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .header {
@@ -41,6 +73,50 @@
             padding: 30px 40px;
             background: linear-gradient(135deg, #184A3D 0%, #2A6B5A 100%);
             border-bottom: 4px solid #E99852;
+        }
+
+        /* Theme Selector */
+        .theme-selector {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(233, 152, 82, 0.3);
+            border-radius: 10px;
+            padding: 4px;
+            margin-right: 16px;
+        }
+
+        .theme-btn {
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .theme-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .theme-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .theme-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .theme-btn:hover svg {
+            transform: scale(1.1);
         }
 
         .header-left h1 {
@@ -94,10 +170,11 @@
         /* Workflow Tabs */
         .workflow-tabs {
             display: flex;
-            background: #f5f5f4;
-            border-bottom: 3px solid #e7e5e4;
+            background: var(--bg-secondary);
+            border-bottom: 3px solid var(--border-color);
             padding: 0 40px;
             gap: 8px;
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .tab-button {
@@ -107,7 +184,7 @@
             background: transparent;
             border: none;
             border-radius: 0;
-            color: #57534e;
+            color: var(--text-secondary);
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
@@ -124,10 +201,20 @@
             box-shadow: none;
         }
 
+        html.dark .tab-button:hover {
+            background: rgba(155, 194, 182, 0.1);
+            color: #9bc2b6;
+        }
+
         .tab-button.active {
-            background: white;
+            background: var(--bg-primary);
             color: #184A3D;
             border-bottom-color: #184A3D;
+        }
+
+        html.dark .tab-button.active {
+            color: #9bc2b6;
+            border-bottom-color: #9bc2b6;
         }
 
         .tab-button .tab-icon {
@@ -145,11 +232,11 @@
 
         /* Image Upload Styles */
         .image-upload-area {
-            border: 3px dashed #d6d3d1;
+            border: 3px dashed var(--border-light);
             border-radius: 12px;
             padding: 40px;
             text-align: center;
-            background: #fafaf9;
+            background: var(--bg-tertiary);
             transition: all 0.3s ease;
             cursor: pointer;
             margin-bottom: 24px;
@@ -157,7 +244,11 @@
 
         .image-upload-area:hover {
             border-color: #184A3D;
-            background: white;
+            background: var(--bg-primary);
+        }
+
+        html.dark .image-upload-area:hover {
+            border-color: #9bc2b6;
         }
 
         .image-upload-area.drag-over {
@@ -165,20 +256,25 @@
             background: #e6f0ed;
         }
 
+        html.dark .image-upload-area.drag-over {
+            border-color: #9bc2b6;
+            background: rgba(155, 194, 182, 0.1);
+        }
+
         .image-upload-icon {
             font-size: 48px;
             margin-bottom: 16px;
-            color: #78716c;
+            color: var(--text-muted);
         }
 
         .image-upload-area p {
-            color: #57534e;
+            color: var(--text-secondary);
             margin: 8px 0;
         }
 
         .image-upload-area .supported-formats {
             font-size: 13px;
-            color: #78716c;
+            color: var(--text-muted);
             margin-top: 12px;
         }
 
@@ -186,9 +282,10 @@
             display: none;
             margin-bottom: 24px;
             padding: 24px;
-            background: white;
+            background: var(--bg-primary);
             border-radius: 12px;
-            border: 2px solid #e7e5e4;
+            border: 2px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .image-preview.active {
@@ -200,7 +297,7 @@
             max-height: 400px;
             border-radius: 8px;
             margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px var(--shadow-light);
         }
 
         .image-metadata {
@@ -209,7 +306,7 @@
             flex-wrap: wrap;
             margin-bottom: 16px;
             font-size: 14px;
-            color: #57534e;
+            color: var(--text-secondary);
         }
 
         .image-metadata-item {
@@ -219,7 +316,7 @@
         }
 
         .image-metadata-item strong {
-            color: #292524;
+            color: var(--text-primary);
         }
 
         .clear-image-btn {
@@ -263,7 +360,7 @@
             display: block;
             margin-bottom: 10px;
             font-weight: 600;
-            color: #1c1917;
+            color: var(--text-primary);
             font-size: 0.95em;
             letter-spacing: 0.3px;
         }
@@ -272,12 +369,13 @@
             width: 100%;
             height: 52px;
             padding: 0 16px;
-            border: 2px solid #e7e5e4;
+            border: 2px solid var(--border-color);
             border-radius: 10px;
             font-size: 15px;
             font-family: 'Inter', 'Space Grotesk', sans-serif;
             transition: all 0.3s ease;
-            background: #fafaf9;
+            background: var(--input-bg);
+            color: var(--text-primary);
             line-height: 1.5;
         }
 
@@ -285,21 +383,36 @@
             width: 100%;
             min-height: 140px;
             padding: 14px 16px;
-            border: 2px solid #e7e5e4;
+            border: 2px solid var(--border-color);
             border-radius: 10px;
             font-size: 15px;
             font-family: 'JetBrains Mono', monospace;
             transition: all 0.3s ease;
-            background: #fafaf9;
+            background: var(--input-bg);
+            color: var(--text-primary);
             resize: vertical;
             line-height: 1.6;
+        }
+
+        textarea::placeholder, input::placeholder {
+            color: var(--text-muted);
         }
 
         textarea:focus, input:focus, select:focus {
             outline: none;
             border-color: #184A3D;
-            background: white;
+            background: var(--bg-primary);
             box-shadow: 0 0 0 3px rgba(24, 74, 61, 0.1);
+        }
+
+        html.dark textarea:focus, html.dark input:focus, html.dark select:focus {
+            border-color: #9bc2b6;
+            box-shadow: 0 0 0 3px rgba(155, 194, 182, 0.15);
+        }
+
+        select option {
+            background: var(--bg-primary);
+            color: var(--text-primary);
         }
 
         .options {
@@ -356,9 +469,10 @@
             display: none;
             margin-top: 30px;
             padding: 24px;
-            background: linear-gradient(135deg, #fafaf9 0%, #f0eeec 100%);
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
             border-radius: 12px;
-            border: 2px solid #e7e5e4;
+            border: 2px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .result-section.active {
@@ -366,14 +480,14 @@
         }
 
         .result-section h2 {
-            color: #1c1917;
+            color: var(--text-primary);
             margin-bottom: 20px;
             font-size: 1.8em;
             font-weight: 700;
         }
 
         .result-section h3 {
-            color: #292524;
+            color: var(--text-primary);
             margin-bottom: 12px;
             margin-top: 20px;
             font-size: 1.2em;
@@ -391,28 +505,43 @@
             line-height: 1.6;
         }
 
+        html.dark .beta-disclaimer {
+            background: linear-gradient(135deg, rgba(254, 243, 199, 0.15) 0%, rgba(253, 230, 138, 0.1) 100%);
+            color: #fbbf24;
+        }
+
         .beta-disclaimer strong {
             color: #78350f;
         }
 
+        html.dark .beta-disclaimer strong {
+            color: #fcd34d;
+        }
+
         .annotation-box {
-            background: white;
+            background: var(--bg-primary);
             padding: 24px;
             border-radius: 12px;
             margin: 10px 0;
             border-left: 5px solid #184A3D;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px var(--shadow-light);
+            transition: background 0.3s ease;
+        }
+
+        html.dark .annotation-box {
+            border-left-color: #9bc2b6;
         }
 
         .annotation-text {
             font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 14px;
-            color: #1c1917;
+            color: var(--text-primary);
             word-break: break-word;
             line-height: 1.8;
-            background: #fafaf9;
+            background: var(--bg-tertiary);
             padding: 16px;
             border-radius: 8px;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .status-badge {
@@ -520,15 +649,17 @@
         }
 
         .feedback {
-            background: white;
+            background: var(--bg-primary);
             padding: 18px;
             border-radius: 10px;
             margin: 12px 0;
             white-space: pre-wrap;
             font-size: 14px;
             line-height: 1.7;
-            border: 1px solid #e7e5e4;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px var(--shadow-light);
+            color: var(--text-primary);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .error {
@@ -539,6 +670,11 @@
             margin: 12px 0;
             border: 2px solid #ef4444;
             font-weight: 500;
+        }
+
+        html.dark .error {
+            background: linear-gradient(135deg, rgba(254, 242, 242, 0.1) 0%, rgba(254, 226, 226, 0.05) 100%);
+            color: #fca5a5;
         }
 
         .copy-btn {
@@ -583,9 +719,10 @@
             align-items: center;
             margin-bottom: 24px;
             padding: 16px;
-            background: linear-gradient(135deg, #fafaf9 0%, #f0eeec 100%);
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
             border-radius: 10px;
-            border: 2px solid #e7e5e4;
+            border: 2px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         .checkbox-container input[type="checkbox"] {
@@ -596,16 +733,20 @@
             accent-color: #184A3D;
         }
 
+        html.dark .checkbox-container input[type="checkbox"] {
+            accent-color: #9bc2b6;
+        }
+
         .checkbox-container label {
             margin: 0;
             font-weight: 600;
             cursor: pointer;
-            color: #1c1917;
+            color: var(--text-primary);
         }
 
         .checkbox-help {
             font-size: 13px;
-            color: #57534e;
+            color: var(--text-secondary);
             margin-left: 30px;
             font-weight: 400;
         }
@@ -622,6 +763,12 @@
             box-shadow: 0 4px 12px rgba(24, 74, 61, 0.15);
         }
 
+        html.dark .progress-status {
+            background: linear-gradient(135deg, rgba(155, 194, 182, 0.15) 0%, rgba(116, 170, 153, 0.1) 100%);
+            border-left-color: #9bc2b6;
+            color: #9bc2b6;
+        }
+
         .progress-status.active {
             display: block;
         }
@@ -635,12 +782,13 @@
 
         .progress-step {
             padding: 6px 14px;
-            background: #e7e5e4;
+            background: var(--border-color);
             border-radius: 16px;
             font-size: 12px;
             opacity: 0.6;
             font-weight: 500;
             border: 2px solid transparent;
+            color: var(--text-secondary);
         }
 
         .progress-step.active {
@@ -667,9 +815,10 @@
             text-align: center;
             padding: 20px;
             margin-top: 40px;
-            border-top: 2px solid #e7e5e4;
-            color: #57534e;
+            border-top: 2px solid var(--border-color);
+            color: var(--text-secondary);
             font-size: 14px;
+            transition: border-color 0.3s ease, color 0.3s ease;
         }
 
         .footer a {
@@ -679,14 +828,22 @@
             transition: color 0.3s ease;
         }
 
+        html.dark .footer a {
+            color: #9bc2b6;
+        }
+
         .footer a:hover {
             color: #2A6B5A;
             text-decoration: underline;
         }
 
+        html.dark .footer a:hover {
+            color: #c2d9d2;
+        }
+
         .version-info {
             font-size: 12px;
-            color: #78716c;
+            color: var(--text-muted);
             margin-top: 8px;
             font-family: 'JetBrains Mono', monospace;
         }
@@ -793,6 +950,23 @@
                 <p class="subtitle">Multi-Agent System for HED Annotation Generation</p>
             </div>
             <div class="header-right">
+                <div class="theme-selector">
+                    <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="Light mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+                    <button class="theme-btn" id="theme-system" onclick="setTheme('system')" title="System preference">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </button>
+                    <button class="theme-btn" id="theme-dark" onclick="setTheme('dark')" title="Dark mode">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                </div>
                 <a href="https://annotation.garden" target="_blank" rel="noopener noreferrer" class="logo-link" title="Visit Annotation Garden">
                     <div class="logo-container">
                         <img src="assets/AGI-square.svg" alt="Annotation Garden Logo">
@@ -968,6 +1142,57 @@ Example: A red circle appears on the left side of the screen and the participant
 
     <script src="config.js"></script>
     <script>
+        // Theme Selector Functionality
+        let currentTheme = 'system';
+
+        function getSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme(theme) {
+            const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+            if (effectiveTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function updateThemeButtons() {
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`theme-${currentTheme}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('theme', theme);
+            applyTheme(theme);
+            updateThemeButtons();
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            currentTheme = savedTheme || 'system';
+            applyTheme(currentTheme);
+            // Update buttons after DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', updateThemeButtons);
+            } else {
+                updateThemeButtons();
+            }
+        }
+
+        // Listen for system theme changes when in system mode
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (currentTheme === 'system') {
+                applyTheme('system');
+            }
+        });
+
+        // Initialize theme on page load (before DOM ready to prevent flash)
+        initTheme();
+
         // Backend API URL - Automatically detect based on environment
         // For production: Set BACKEND_URL in your environment or use Cloudflare Tunnel URL
         // For local development: Uses localhost:38427
