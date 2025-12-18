@@ -76,9 +76,20 @@ def create_byok_workflow(
     llm_temperature = (
         temperature if temperature is not None else _byok_config.get("temperature", 0.1)
     )
-    provider_preference = (
-        provider if provider is not None else _byok_config.get("provider_preference")
-    )
+
+    # Provider logic:
+    # - If user specifies a custom model, clear provider (Cerebras only works with default models)
+    # - Unless user also explicitly specifies a provider
+    if provider is not None:
+        # User explicitly set provider (could be empty string to clear it)
+        provider_preference = provider if provider else None
+    elif model is not None:
+        # User specified custom model but no provider → clear provider
+        # (Cerebras only works with default models)
+        provider_preference = None
+    else:
+        # No custom model or provider → use server defaults
+        provider_preference = _byok_config.get("provider_preference")
 
     # Get model configuration: user override > server env var > default
     default_annotation_model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
@@ -143,8 +154,18 @@ def create_byok_vision_agent(
     default_vision_provider = os.getenv("VISION_PROVIDER", "deepinfra/fp8")
 
     actual_model = vision_model if vision_model else default_vision_model
-    actual_provider = provider if provider is not None else default_vision_provider
     actual_temperature = temperature if temperature is not None else 0.3
+
+    # Provider logic:
+    # - If user specifies a custom vision model, clear provider
+    # - Unless user also explicitly specifies a provider
+    if provider is not None:
+        actual_provider = provider if provider else None
+    elif vision_model is not None:
+        # Custom vision model → clear provider
+        actual_provider = None
+    else:
+        actual_provider = default_vision_provider
 
     vision_llm = create_openrouter_llm(
         model=actual_model,
