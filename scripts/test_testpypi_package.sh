@@ -48,12 +48,24 @@ echo "1. Installing hedit from TestPyPI"
 echo "========================================"
 
 # Install from TestPyPI with PyPI fallback for dependencies
+# Note: --index-strategy unsafe-best-match allows finding hedit on TestPyPI
+# even though it also exists on PyPI (with different versions)
 if [ -n "$VERSION" ]; then
-    echo "Installing hedit==$VERSION..."
-    uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "hedit==$VERSION"
+    # Normalize version: 0.6.3-dev -> 0.6.3.dev0 (PEP 440)
+    NORMALIZED_VERSION=$(echo "$VERSION" | sed 's/-dev/.dev0/; s/-alpha/.a0/; s/-beta/.b0/')
+    echo "Installing hedit==$NORMALIZED_VERSION (from $VERSION)..."
+    uv pip install \
+        --index-url https://test.pypi.org/simple/ \
+        --extra-index-url https://pypi.org/simple/ \
+        --index-strategy unsafe-best-match \
+        "hedit==$NORMALIZED_VERSION"
 else
-    echo "Installing latest hedit..."
-    uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ hedit
+    echo "Installing latest hedit from TestPyPI..."
+    uv pip install \
+        --index-url https://test.pypi.org/simple/ \
+        --extra-index-url https://pypi.org/simple/ \
+        --index-strategy unsafe-best-match \
+        hedit
 fi
 
 echo ""
@@ -79,14 +91,29 @@ echo "3. Installing standalone extras"
 echo "========================================"
 
 if [ -n "$VERSION" ]; then
-    uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "hedit[standalone]==$VERSION"
+    echo "Installing hedit[standalone]==$NORMALIZED_VERSION..."
+    uv pip install \
+        --index-url https://test.pypi.org/simple/ \
+        --extra-index-url https://pypi.org/simple/ \
+        --index-strategy unsafe-best-match \
+        "hedit[standalone]==$NORMALIZED_VERSION"
 else
-    uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "hedit[standalone]"
+    echo "Installing hedit[standalone] from TestPyPI..."
+    uv pip install \
+        --index-url https://test.pypi.org/simple/ \
+        --extra-index-url https://pypi.org/simple/ \
+        --index-strategy unsafe-best-match \
+        "hedit[standalone]"
 fi
 
 echo ""
 echo "--- hedit health --standalone ---"
-hedit health --standalone
+if [ -n "$TEST_API_KEY" ]; then
+    hedit health --standalone --api-key "$TEST_API_KEY"
+else
+    echo "SKIPPED: Standalone health requires API key"
+    echo "(Standalone mode needs API key for LLM initialization)"
+fi
 
 echo ""
 echo "========================================"
@@ -99,11 +126,13 @@ hedit validate "Sensory-event, Visual-presentation" || echo "Validation failed"
 
 echo ""
 echo "--- Valid HED string (standalone) ---"
+# Note: Standalone validation uses Python hedtools, doesn't need API key
 hedit validate "Sensory-event, Visual-presentation" --standalone || echo "Validation failed"
 
 echo ""
 echo "--- Invalid HED string (standalone) ---"
-hedit validate "NotARealTag, InvalidTag" --standalone || echo "Expected to fail for invalid tags"
+# Should report as invalid
+hedit validate "NotARealTag, InvalidTag" --standalone && echo "WARNING: Expected to fail for invalid tags" || echo "Correctly identified invalid tags"
 
 echo ""
 echo "========================================"
