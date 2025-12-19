@@ -63,7 +63,7 @@ class LocalExecutionBackend(ExecutionBackend):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None = None,
         model: str | None = None,
         vision_model: str | None = None,
         provider: str | None = None,
@@ -73,19 +73,14 @@ class LocalExecutionBackend(ExecutionBackend):
         """Initialize local execution backend.
 
         Args:
-            api_key: OpenRouter API key (required)
+            api_key: OpenRouter API key (required for LLM operations, optional for health/validate)
             model: Model for text annotation (default: openai/gpt-oss-120b)
             vision_model: Model for image annotation (default: qwen/qwen3-vl-30b-a3b-instruct)
             provider: Provider preference (cleared if custom model specified)
             temperature: LLM temperature (0.0-1.0)
             schema_dir: Optional directory with JSON schemas (None = fetch from GitHub)
         """
-        if not api_key:
-            raise ExecutionError(
-                "OpenRouter API key required for standalone mode",
-                code="missing_api_key",
-                detail="Provide --api-key or run 'hedit init'",
-            )
+        # API key is optional at init time - only required for LLM operations
 
         self._api_key = api_key
         self._model = model or "openai/gpt-oss-120b"
@@ -124,10 +119,20 @@ class LocalExecutionBackend(ExecutionBackend):
                 detail="Install with: pip install hedit[standalone]",
             )
 
+    def _ensure_api_key(self) -> None:
+        """Ensure API key is available for LLM operations."""
+        if not self._api_key:
+            raise ExecutionError(
+                "OpenRouter API key required for standalone mode",
+                code="missing_api_key",
+                detail="Provide --api-key or run 'hedit init'",
+            )
+
     def _get_workflow(self) -> HedAnnotationWorkflow:
         """Get or create the annotation workflow."""
         if self._workflow is None:
             self._ensure_deps()
+            self._ensure_api_key()
 
             from src.agents.workflow import HedAnnotationWorkflow
             from src.utils.openrouter_llm import create_openrouter_llm
@@ -156,6 +161,7 @@ class LocalExecutionBackend(ExecutionBackend):
         """Get or create the vision agent."""
         if self._vision_agent is None:
             self._ensure_deps()
+            self._ensure_api_key()
 
             from src.agents.vision_agent import VisionAgent
             from src.utils.openrouter_llm import create_openrouter_llm
