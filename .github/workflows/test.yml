@@ -90,11 +90,12 @@ jobs:
           echo "$CHANGED"
 
           # Integration tests should run if these paths change:
-          # - Integration test file itself
+          # - Integration test files (test_integration*.py, test_cli_integration.py)
           # - Agent code (workflow, annotation, evaluation, etc.)
           # - Validation code
           # - OpenRouter LLM utility
-          INTEGRATION_PATTERNS="tests/test_integration|src/agents/|src/validation/|src/utils/openrouter"
+          # - CLI code (for CLI integration tests)
+          INTEGRATION_PATTERNS="tests/test_.*integration|src/agents/|src/validation/|src/utils/openrouter|src/cli/"
 
           if echo "$CHANGED" | grep -qE "$INTEGRATION_PATTERNS"; then
             echo "integration_needed=true" >> $GITHUB_OUTPUT

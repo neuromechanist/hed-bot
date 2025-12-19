@@ -83,10 +83,11 @@ export default {
                            origin?.startsWith('http://localhost:'); // Allow localhost for dev
 
     // CORS headers
+    // Include BYOK headers (X-OpenRouter-*) for CLI and programmatic access
     const corsHeaders = {
       'Access-Control-Allow-Origin': isAllowedOrigin ? origin : CONFIG.ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key, X-OpenRouter-Key, X-OpenRouter-Model, X-OpenRouter-Provider, X-OpenRouter-Temperature',
       'Access-Control-Allow-Credentials': 'true',
     };
 
@@ -277,22 +278,30 @@ async function handleAnnotate(request, env, ctx, corsHeaders, CONFIG) {
     });
   }
 
-  // Verify Turnstile token (required in production)
-  const clientIp = request.headers.get('CF-Connecting-IP');
-  const turnstileResult = await verifyTurnstileToken(
-    cf_turnstile_response,
-    env.TURNSTILE_SECRET_KEY,
-    clientIp
-  );
+  // Check for BYOK (Bring Your Own Key) mode - CLI/programmatic access with user's own API key
+  // BYOK users skip Turnstile verification since:
+  // 1. They can't complete Turnstile challenges (CLI/programmatic access)
+  // 2. They're using their own API key, so any abuse is on their own account
+  const isBYOK = request.headers.get('X-OpenRouter-Key') !== null;
 
-  if (!turnstileResult.success) {
-    return new Response(JSON.stringify({
-      error: 'Bot verification failed',
-      details: turnstileResult.error,
-    }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  // Verify Turnstile token (required for non-BYOK requests in production)
+  if (!isBYOK) {
+    const clientIp = request.headers.get('CF-Connecting-IP');
+    const turnstileResult = await verifyTurnstileToken(
+      cf_turnstile_response,
+      env.TURNSTILE_SECRET_KEY,
+      clientIp
+    );
+
+    if (!turnstileResult.success) {
+      return new Response(JSON.stringify({
+        error: 'Bot verification failed',
+        details: turnstileResult.error,
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   // Check rate limit
@@ -319,9 +328,18 @@ async function handleAnnotate(request, env, ctx, corsHeaders, CONFIG) {
       'Content-Type': 'application/json',
     };
 
-    // Add API key if configured
+    // Add backend API key if configured
     if (env.BACKEND_API_KEY) {
       backendHeaders['X-API-Key'] = env.BACKEND_API_KEY;
+    }
+
+    // Forward BYOK headers to backend for user's own API key
+    const byokHeaders = ['X-OpenRouter-Key', 'X-OpenRouter-Model', 'X-OpenRouter-Provider', 'X-OpenRouter-Temperature'];
+    for (const header of byokHeaders) {
+      const value = request.headers.get(header);
+      if (value) {
+        backendHeaders[header] = value;
+      }
     }
 
     // Proxy request to Python backend
@@ -398,22 +416,27 @@ async function handleAnnotateFromImage(request, env, corsHeaders, CONFIG) {
       });
     }
 
-    // Verify Turnstile token (required in production)
-    const clientIp = request.headers.get('CF-Connecting-IP');
-    const turnstileResult = await verifyTurnstileToken(
-      cf_turnstile_response,
-      env.TURNSTILE_SECRET_KEY,
-      clientIp
-    );
+    // Check for BYOK (Bring Your Own Key) mode - CLI/programmatic access with user's own API key
+    const isBYOK = request.headers.get('X-OpenRouter-Key') !== null;
 
-    if (!turnstileResult.success) {
-      return new Response(JSON.stringify({
-        error: 'Bot verification failed',
-        details: turnstileResult.error,
-      }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Verify Turnstile token (required for non-BYOK requests in production)
+    if (!isBYOK) {
+      const clientIp = request.headers.get('CF-Connecting-IP');
+      const turnstileResult = await verifyTurnstileToken(
+        cf_turnstile_response,
+        env.TURNSTILE_SECRET_KEY,
+        clientIp
+      );
+
+      if (!turnstileResult.success) {
+        return new Response(JSON.stringify({
+          error: 'Bot verification failed',
+          details: turnstileResult.error,
+        }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Prepare headers for backend request
@@ -421,9 +444,18 @@ async function handleAnnotateFromImage(request, env, corsHeaders, CONFIG) {
       'Content-Type': 'application/json',
     };
 
-    // Add API key if configured
+    // Add backend API key if configured
     if (env.BACKEND_API_KEY) {
       backendHeaders['X-API-Key'] = env.BACKEND_API_KEY;
+    }
+
+    // Forward BYOK headers to backend for user's own API key
+    const byokHeaders = ['X-OpenRouter-Key', 'X-OpenRouter-Model', 'X-OpenRouter-Provider', 'X-OpenRouter-Temperature'];
+    for (const header of byokHeaders) {
+      const value = request.headers.get(header);
+      if (value) {
+        backendHeaders[header] = value;
+      }
     }
 
     // Proxy request to Python backend
