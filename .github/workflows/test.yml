@@ -131,14 +131,10 @@ jobs:
       - name: Run integration tests only
         env:
           OPENROUTER_API_KEY_FOR_TESTING: ${{ secrets.OPENROUTER_API_KEY_FOR_TESTING }}
-          # Use worker URL directly to bypass Cloudflare edge protection
-          # The worker handles BYOK requests without Turnstile verification
-          HEDIT_TEST_API_URL: https://hedit-api.shirazi-10f.workers.dev
         run: |
           # Only run if the secret is available
           if [ -n "$OPENROUTER_API_KEY_FOR_TESTING" ]; then
             echo "Running integration tests with OpenRouter..."
-            echo "Using API URL: $HEDIT_TEST_API_URL"
             pytest tests/ -v -m integration --timeout=180 --cov=src --cov-report=xml:coverage-integration.xml --cov-report=term-missing
           else
             echo "OPENROUTER_API_KEY_FOR_TESTING not set, skipping integration tests"
