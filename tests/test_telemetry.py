@@ -4,12 +4,16 @@ Tests cover:
 - Telemetry event creation and schema
 - Model blacklist filtering
 - Input deduplication
-- Storage backends (local file)
+- Storage backends (local file, Cloudflare KV)
 """
 
 import json
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from src.telemetry import (
+    CloudflareKVStorage,
     LocalFileStorage,
     TelemetryCollector,
     TelemetryEvent,
@@ -339,3 +343,279 @@ class TestTelemetryIntegration:
         # Verify all hashes are in index
         for event in events:
             assert storage.has_input(event.input_hash)
+
+
+class TestLocalFileStorageAsync:
+    """Tests for async methods of LocalFileStorage."""
+
+    @pytest.mark.asyncio
+    async def test_async_store(self, tmp_path):
+        """Test async store method."""
+        storage = LocalFileStorage(storage_dir=tmp_path / "telemetry")
+        event = TelemetryEvent.create(
+            description="async test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="test/model",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="cli",
+        )
+
+        await storage.store(event)
+
+        # Check event was stored
+        event_file = storage.storage_dir / f"{event.event_id}.json"
+        assert event_file.exists()
+        assert storage.has_input(event.input_hash)
+
+
+class TestLocalFileStorageErrorHandling:
+    """Tests for error handling in LocalFileStorage."""
+
+    def test_load_index_with_corrupted_json(self, tmp_path):
+        """Test loading index with corrupted JSON file."""
+        storage_dir = tmp_path / "telemetry"
+        storage_dir.mkdir()
+
+        # Create corrupted index file
+        index_file = storage_dir / "input_hashes.json"
+        index_file.write_text("not valid json{{{")
+
+        # Should return empty set on corrupted file
+        storage = LocalFileStorage(storage_dir=storage_dir)
+        assert storage._input_hashes == set()
+
+    def test_store_event_with_write_error(self, tmp_path):
+        """Test storing event when write fails."""
+        storage = LocalFileStorage(storage_dir=tmp_path / "telemetry")
+        event = TelemetryEvent.create(
+            description="error test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="test/model",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="cli",
+        )
+
+        # Mock open to raise OSError
+        with patch("builtins.open", side_effect=OSError("Write failed")):
+            # Should not raise, just silently fail
+            storage.store_sync(event)
+
+        # Hash should still be added to memory (index update happens after file write)
+        # But since we mocked open globally, index save also failed
+        # The in-memory set should still have the hash
+        assert event.input_hash in storage._input_hashes
+
+
+class TestCloudflareKVStorage:
+    """Tests for Cloudflare KV storage backend."""
+
+    @pytest.fixture
+    def kv_storage(self):
+        """Create a CloudflareKVStorage instance."""
+        return CloudflareKVStorage(
+            account_id="test-account",
+            namespace_id="test-namespace",
+            api_token="test-token",
+        )
+
+    @pytest.fixture
+    def sample_event(self):
+        """Create a sample telemetry event."""
+        return TelemetryEvent.create(
+            description="kv test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="test/model",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="cli",
+        )
+
+    def test_initialization(self, kv_storage):
+        """Test CloudflareKVStorage initialization."""
+        assert kv_storage.account_id == "test-account"
+        assert kv_storage.namespace_id == "test-namespace"
+        assert kv_storage.api_token == "test-token"
+        assert "test-account" in kv_storage.base_url
+        assert "test-namespace" in kv_storage.base_url
+
+    def test_store_sync(self, kv_storage, sample_event):
+        """Test synchronous store method."""
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_client_class.return_value.__exit__ = MagicMock(return_value=False)
+
+            kv_storage.store_sync(sample_event)
+
+            mock_client.put.assert_called_once()
+            call_args = mock_client.put.call_args
+            assert sample_event.to_kv_key() in call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_async_store(self, kv_storage, sample_event):
+        """Test async store method."""
+        from unittest.mock import AsyncMock
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client.put = AsyncMock(return_value=MagicMock())
+            mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await kv_storage.store(sample_event)
+
+            mock_client.put.assert_called_once()
+
+    def test_has_input_returns_true(self, kv_storage):
+        """Test has_input returns True when key exists."""
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"result": [{"name": "key1"}]}
+            mock_response.raise_for_status = MagicMock()
+            mock_client.get.return_value = mock_response
+            mock_client_class.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_client_class.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = kv_storage.has_input("test_hash")
+
+            assert result is True
+
+    def test_has_input_returns_false(self, kv_storage):
+        """Test has_input returns False when key doesn't exist."""
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"result": []}
+            mock_response.raise_for_status = MagicMock()
+            mock_client.get.return_value = mock_response
+            mock_client_class.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_client_class.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = kv_storage.has_input("nonexistent_hash")
+
+            assert result is False
+
+    def test_has_input_returns_false_on_error(self, kv_storage):
+        """Test has_input returns False on HTTP error."""
+        with patch("httpx.Client") as mock_client_class:
+            import httpx
+
+            mock_client = MagicMock()
+            mock_client.get.side_effect = httpx.HTTPError("Connection failed")
+            mock_client_class.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_client_class.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = kv_storage.has_input("test_hash")
+
+            assert result is False
+
+
+class TestTelemetryCollectorAsync:
+    """Tests for async methods of TelemetryCollector."""
+
+    @pytest.mark.asyncio
+    async def test_async_collect(self, tmp_path):
+        """Test async collect method."""
+        storage = LocalFileStorage(storage_dir=tmp_path / "telemetry")
+        collector = TelemetryCollector(storage=storage, enabled=True)
+
+        event = TelemetryEvent.create(
+            description="async collect test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="anthropic/claude-haiku-4.5",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="cli",
+        )
+
+        collected = await collector.collect(event)
+
+        assert collected is True
+        assert storage.has_input(event.input_hash)
+
+    @pytest.mark.asyncio
+    async def test_async_collect_filtered(self, tmp_path):
+        """Test async collect with filtered event."""
+        storage = LocalFileStorage(storage_dir=tmp_path / "telemetry")
+        collector = TelemetryCollector(storage=storage, enabled=False)
+
+        event = TelemetryEvent.create(
+            description="filtered test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="anthropic/claude-haiku-4.5",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="cli",
+        )
+
+        collected = await collector.collect(event)
+
+        assert collected is False
+
+
+class TestTelemetryCollectorCreateEvent:
+    """Tests for TelemetryCollector.create_event class method."""
+
+    def test_create_event_basic(self):
+        """Test creating event via collector class method."""
+        event = TelemetryCollector.create_event(
+            description="method test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=["error1"],
+            model="test/model",
+            provider="TestProvider",
+            temperature=0.2,
+            latency_ms=200,
+            source="api",
+        )
+
+        assert event.input.description == "method test"
+        assert event.output.hed_string == "Test"
+        assert event.output.validation_errors == ["error1"]
+        assert event.model.model == "test/model"
+        assert event.model.provider == "TestProvider"
+        assert event.source == "api"
+
+    def test_create_event_with_kwargs(self):
+        """Test creating event with additional kwargs."""
+        event = TelemetryCollector.create_event(
+            description="kwargs test",
+            schema_version="8.4.0",
+            hed_string="Test",
+            iterations=1,
+            validation_errors=[],
+            model="test/model",
+            provider=None,
+            temperature=0.1,
+            latency_ms=100,
+            source="web",
+            session_id="test-session-123",
+        )
+
+        assert event.session_id == "test-session-123"
+        assert event.source == "web"

@@ -337,3 +337,43 @@ class TestFirstRunDisclosure:
 
         # Should not be first run
         assert is_first_run() is False
+
+    def test_mark_first_run_complete_handles_write_error(self, temp_config_dir):
+        """Test that mark_first_run_complete handles OSError gracefully."""
+        from unittest.mock import patch
+
+        # Mock Path.touch to raise OSError
+        with patch("src.cli.config.FIRST_RUN_FILE") as mock_file:
+            mock_file.touch.side_effect = OSError("Permission denied")
+
+            # Should not raise, just silently fail
+            mark_first_run_complete()
+
+
+class TestTelemetryConfig:
+    """Tests for telemetry configuration."""
+
+    def test_default_telemetry_config(self):
+        """Test default telemetry configuration."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig()
+
+        assert config.enabled is True
+        assert "openai/gpt-oss-120b" in config.model_blacklist
+
+    def test_telemetry_config_disabled(self):
+        """Test telemetry can be disabled."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig(enabled=False)
+
+        assert config.enabled is False
+
+    def test_telemetry_config_custom_blacklist(self):
+        """Test telemetry with custom model blacklist."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig(model_blacklist=["custom/model"])
+
+        assert config.model_blacklist == ["custom/model"]
