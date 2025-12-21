@@ -84,6 +84,16 @@ class APIConfig(BaseModel):
     url: str = Field(default=DEFAULT_API_URL, description="API endpoint URL")
 
 
+class TelemetryConfig(BaseModel):
+    """Telemetry configuration."""
+
+    enabled: bool = Field(default=True, description="Enable telemetry collection")
+    model_blacklist: list[str] = Field(
+        default_factory=lambda: [DEFAULT_MODEL],
+        description="Models to exclude from telemetry",
+    )
+
+
 class CLIConfig(BaseModel):
     """Complete CLI configuration."""
 
@@ -92,6 +102,7 @@ class CLIConfig(BaseModel):
     settings: SettingsConfig = Field(default_factory=SettingsConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     execution: ExecutionMode = Field(default_factory=ExecutionMode)
+    telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
 
 
 def ensure_config_dir() -> None:
