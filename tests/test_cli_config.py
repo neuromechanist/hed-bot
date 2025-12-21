@@ -11,8 +11,11 @@ from src.cli.config import (
     clear_credentials,
     get_api_key,
     get_effective_config,
+    get_machine_id,
+    is_first_run,
     load_config,
     load_credentials,
+    mark_first_run_complete,
     save_config,
     save_credentials,
     update_config,
@@ -30,6 +33,8 @@ def temp_config_dir(tmp_path):
         patch("src.cli.config.CONFIG_DIR", config_dir),
         patch("src.cli.config.CONFIG_FILE", config_dir / "config.yaml"),
         patch("src.cli.config.CREDENTIALS_FILE", config_dir / "credentials.yaml"),
+        patch("src.cli.config.MACHINE_ID_FILE", config_dir / "machine_id"),
+        patch("src.cli.config.FIRST_RUN_FILE", config_dir / ".first_run"),
     ):
         yield config_dir
 
@@ -227,3 +232,148 @@ class TestEffectiveConfig:
         assert config.models.default == "saved-model"
         # Temperature should be overridden
         assert config.models.temperature == 0.5
+
+
+class TestMachineID:
+    """Tests for machine ID generation and caching."""
+
+    def test_machine_id_generation(self, temp_config_dir):
+        """Test that machine ID is generated on first call."""
+        machine_id = get_machine_id()
+
+        # Should be 16 hex characters
+        assert len(machine_id) == 16
+        assert all(c in "0123456789abcdef" for c in machine_id)
+
+    def test_machine_id_persistence(self, temp_config_dir):
+        """Test that machine ID persists across calls."""
+        first_id = get_machine_id()
+        second_id = get_machine_id()
+
+        # Should return same ID
+        assert first_id == second_id
+
+    def test_machine_id_file_creation(self, temp_config_dir):
+        """Test that machine ID is saved to file."""
+        from src.cli.config import MACHINE_ID_FILE
+
+        machine_id = get_machine_id()
+
+        # File should exist
+        assert MACHINE_ID_FILE.exists()
+
+        # File should contain the ID
+        saved_id = MACHINE_ID_FILE.read_text().strip()
+        assert saved_id == machine_id
+
+    def test_machine_id_loads_from_file(self, temp_config_dir):
+        """Test that machine ID is loaded from existing file."""
+        from src.cli.config import MACHINE_ID_FILE
+
+        # Manually create a machine ID file
+        test_id = "a1b2c3d4e5f67890"
+        MACHINE_ID_FILE.write_text(test_id)
+
+        # Should load the existing ID
+        loaded_id = get_machine_id()
+        assert loaded_id == test_id
+
+    def test_machine_id_regenerates_on_corruption(self, temp_config_dir):
+        """Test that corrupted machine ID file is regenerated."""
+        from src.cli.config import MACHINE_ID_FILE
+
+        # Create corrupted file (invalid format)
+        MACHINE_ID_FILE.write_text("invalid-id-format")
+
+        # Should regenerate a valid ID
+        new_id = get_machine_id()
+        assert len(new_id) == 16
+        assert all(c in "0123456789abcdef" for c in new_id)
+        assert new_id != "invalid-id-format"
+
+
+class TestFirstRunDisclosure:
+    """Tests for first-run disclosure tracking."""
+
+    def test_is_first_run_when_file_missing(self, temp_config_dir):
+        """Test that is_first_run returns True when marker file doesn't exist."""
+        assert is_first_run() is True
+
+    def test_is_first_run_when_file_exists(self, temp_config_dir):
+        """Test that is_first_run returns False when marker file exists."""
+        from src.cli.config import FIRST_RUN_FILE
+
+        # Create the marker file
+        FIRST_RUN_FILE.touch()
+
+        assert is_first_run() is False
+
+    def test_mark_first_run_complete(self, temp_config_dir):
+        """Test that mark_first_run_complete creates the marker file."""
+        from src.cli.config import FIRST_RUN_FILE
+
+        # Initially should be first run
+        assert is_first_run() is True
+
+        # Mark as complete
+        mark_first_run_complete()
+
+        # File should exist
+        assert FIRST_RUN_FILE.exists()
+
+        # Should no longer be first run
+        assert is_first_run() is False
+
+    def test_mark_first_run_complete_idempotent(self, temp_config_dir):
+        """Test that marking first run complete multiple times is safe."""
+        from src.cli.config import FIRST_RUN_FILE
+
+        # Mark as complete twice
+        mark_first_run_complete()
+        mark_first_run_complete()
+
+        # File should exist
+        assert FIRST_RUN_FILE.exists()
+
+        # Should not be first run
+        assert is_first_run() is False
+
+    def test_mark_first_run_complete_handles_write_error(self, temp_config_dir):
+        """Test that mark_first_run_complete handles OSError gracefully."""
+        from unittest.mock import patch
+
+        # Mock Path.touch to raise OSError
+        with patch("src.cli.config.FIRST_RUN_FILE") as mock_file:
+            mock_file.touch.side_effect = OSError("Permission denied")
+
+            # Should not raise, just silently fail
+            mark_first_run_complete()
+
+
+class TestTelemetryConfig:
+    """Tests for telemetry configuration."""
+
+    def test_default_telemetry_config(self):
+        """Test default telemetry configuration."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig()
+
+        assert config.enabled is True
+        assert "openai/gpt-oss-120b" in config.model_blacklist
+
+    def test_telemetry_config_disabled(self):
+        """Test telemetry can be disabled."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig(enabled=False)
+
+        assert config.enabled is False
+
+    def test_telemetry_config_custom_blacklist(self):
+        """Test telemetry with custom model blacklist."""
+        from src.cli.config import TelemetryConfig
+
+        config = TelemetryConfig(model_blacklist=["custom/model"])
+
+        assert config.model_blacklist == ["custom/model"]
