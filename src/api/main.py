@@ -395,12 +395,13 @@ async def lifespan(app: FastAPI):
 
     # Initialize telemetry collector
     global telemetry_collector
-    telemetry_storage = LocalFileStorage()
+    telemetry_dir = os.getenv("TELEMETRY_DIR", "/app/telemetry")
+    telemetry_storage = LocalFileStorage(storage_dir=telemetry_dir)
     telemetry_collector = TelemetryCollector(
         storage=telemetry_storage,
         enabled=True,  # Can be configured via env var if needed
     )
-    print("Telemetry collector initialized")
+    print(f"Telemetry collector initialized (storage: {telemetry_dir})")
 
     yield
 
