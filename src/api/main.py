@@ -395,7 +395,9 @@ async def lifespan(app: FastAPI):
 
     # Initialize telemetry collector
     global telemetry_collector
-    telemetry_dir = os.getenv("TELEMETRY_DIR", "/app/telemetry")
+    # Use /app/telemetry in Docker, otherwise use local .hedit/telemetry
+    default_telemetry_dir = "/app/telemetry" if Path("/app").exists() else ".hedit/telemetry"
+    telemetry_dir = os.getenv("TELEMETRY_DIR", default_telemetry_dir)
     telemetry_storage = LocalFileStorage(storage_dir=telemetry_dir)
     telemetry_collector = TelemetryCollector(
         storage=telemetry_storage,
