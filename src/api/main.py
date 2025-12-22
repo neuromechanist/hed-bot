@@ -605,9 +605,17 @@ async def annotate(
 
         # Collect telemetry if enabled
         if request.telemetry_enabled and telemetry_collector:
-            # Get model info from BYOK or server config
-            model_name = request.model or _byok_config.get("model", "openai/gpt-oss-120b")
-            temperature = request.temperature or _byok_config.get("temperature", 0.1)
+            # Get model info from request body, BYOK headers, or server config
+            model_name = (
+                request.model
+                or req.headers.get("x-openrouter-model")
+                or os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
+            )
+            temperature = (
+                request.temperature
+                or float(req.headers.get("x-openrouter-temperature", 0))
+                or _byok_config.get("temperature", 0.1)
+            )
 
             event = TelemetryEvent.create(
                 description=request.description,
@@ -616,7 +624,7 @@ async def annotate(
                 iterations=final_state["validation_attempts"],
                 validation_errors=final_state["validation_errors"],
                 model=model_name,
-                provider=request.provider,
+                provider=request.provider or req.headers.get("x-openrouter-provider"),
                 temperature=temperature,
                 latency_ms=latency_ms,
                 source="api",
@@ -747,9 +755,17 @@ async def annotate_from_image(
 
         # Collect telemetry if enabled
         if request.telemetry_enabled and telemetry_collector:
-            # Get model info from BYOK or server config
-            model_name = request.model or _byok_config.get("model", "openai/gpt-oss-120b")
-            temperature = request.temperature or _byok_config.get("temperature", 0.1)
+            # Get model info from request body, BYOK headers, or server config
+            model_name = (
+                request.model
+                or req.headers.get("x-openrouter-model")
+                or os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
+            )
+            temperature = (
+                request.temperature
+                or float(req.headers.get("x-openrouter-temperature", 0))
+                or _byok_config.get("temperature", 0.1)
+            )
 
             event = TelemetryEvent.create(
                 description=image_description,  # Use generated image description
@@ -758,7 +774,7 @@ async def annotate_from_image(
                 iterations=final_state["validation_attempts"],
                 validation_errors=final_state["validation_errors"],
                 model=model_name,
-                provider=request.provider,
+                provider=request.provider or req.headers.get("x-openrouter-provider"),
                 temperature=temperature,
                 latency_ms=latency_ms,
                 source="api-image",  # Distinguish from text-based annotation
