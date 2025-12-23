@@ -12,15 +12,15 @@ The benchmark evaluates multiple LLM models on their ability to generate valid, 
 
 To ensure fair model comparison, the benchmark uses:
 
-1. **Consistent Evaluation Model**: All annotation models are evaluated by the same model (`qwen/qwen3-235b-a22b-2507`). This is configured via the `--eval-model` CLI option.
+1. **Consistent Evaluation Model**: All annotation models are evaluated by the same model (`qwen/qwen3-235b-a22b-2507`) via Cerebras for fast inference. This is configured via the `--eval-model` and `--eval-provider` CLI options.
 
 2. **Separated Concerns**:
-   | Agent | Model Used | Purpose |
-   |-------|-----------|---------|
-   | AnnotationAgent | `--model` (benchmarked) | Generates HED annotation |
-   | EvaluationAgent | `--eval-model` (fixed) | Checks faithfulness |
-   | AssessmentAgent | `--eval-model` (fixed) | Checks completeness |
-   | FeedbackSummarizer | `--eval-model` (fixed) | Condenses errors for retry |
+   | Agent | Model Used | Provider | Purpose |
+   |-------|-----------|----------|---------|
+   | AnnotationAgent | `--model` (benchmarked) | `--provider` | Generates HED annotation |
+   | EvaluationAgent | `--eval-model` (fixed) | `--eval-provider` | Checks faithfulness |
+   | AssessmentAgent | `--eval-model` (fixed) | `--eval-provider` | Checks completeness |
+   | FeedbackSummarizer | `--eval-model` (fixed) | `--eval-provider` | Condenses errors for retry |
 
 3. **Cache Warm-up**: Before benchmarking each model, a warm-up call is made to ensure all models start with equally "warm" caches for system prompts and schema context.
 
@@ -62,7 +62,7 @@ From [GitHub Issue #64](https://github.com/Annotation-Garden/HEDit/issues/64):
 | Mistral-Small-3.2-24B | `mistralai/mistral-small-3.2-24b-instruct` | Balanced |
 | Nemotron-3-Nano-30B | `nvidia/nemotron-3-nano-30b-a3b` | Balanced |
 
-**Evaluation Model**: `qwen/qwen3-235b-a22b-2507` (consistent across all tests)
+**Evaluation Model**: `qwen/qwen3-235b-a22b-2507` via Cerebras (consistent across all tests)
 
 ## Running the Benchmark
 

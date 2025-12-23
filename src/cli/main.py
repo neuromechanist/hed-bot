@@ -121,6 +121,14 @@ EvalModelOption = Annotated[
     ),
 ]
 
+EvalProviderOption = Annotated[
+    str | None,
+    typer.Option(
+        "--eval-provider",
+        help="Provider for evaluation model (e.g., Cerebras for qwen models).",
+    ),
+]
+
 TemperatureOption = Annotated[
     float | None,
     typer.Option(
@@ -172,6 +180,7 @@ def get_executor(
             api_key=api_key,
             model=config.models.default,
             eval_model=config.models.evaluation,
+            eval_provider=config.models.eval_provider,
             vision_model=config.models.vision,
             provider=config.models.provider,
             temperature=config.models.temperature,
@@ -193,6 +202,7 @@ def get_executor(
             api_key=api_key,
             model=config.models.default,
             eval_model=config.models.evaluation,
+            eval_provider=config.models.eval_provider,
             vision_model=config.models.vision,
             provider=config.models.provider,
             temperature=config.models.temperature,
@@ -364,6 +374,7 @@ def annotate(
     api_url: ApiUrlOption = None,
     model: ModelOption = None,
     eval_model: EvalModelOption = None,
+    eval_provider: EvalProviderOption = None,
     provider: ProviderOption = None,
     temperature: TemperatureOption = None,
     schema_version: SchemaVersionOption = None,
@@ -412,6 +423,7 @@ def annotate(
         api_url=api_url,
         model=model,
         eval_model=eval_model,
+        eval_provider=eval_provider,
         provider=provider,
         temperature=temperature,
         schema_version=schema_version,
@@ -469,6 +481,7 @@ def annotate_image(
     api_url: ApiUrlOption = None,
     model: ModelOption = None,
     eval_model: EvalModelOption = None,
+    eval_provider: EvalProviderOption = None,
     provider: ProviderOption = None,
     temperature: TemperatureOption = None,
     schema_version: SchemaVersionOption = None,
@@ -523,6 +536,7 @@ def annotate_image(
         api_url=api_url,
         model=model,
         eval_model=eval_model,
+        eval_provider=eval_provider,
         provider=provider,
         temperature=temperature,
         schema_version=schema_version,

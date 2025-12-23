@@ -53,6 +53,10 @@ class ModelsConfig(BaseModel):
         default=None,
         description="Model for evaluation agent (defaults to default model if not set)",
     )
+    eval_provider: str | None = Field(
+        default=None,
+        description="Provider for evaluation model (e.g., Cerebras for qwen models)",
+    )
     vision: str = Field(default=DEFAULT_VISION_MODEL, description="Vision model for images")
     provider: str | None = Field(default=DEFAULT_PROVIDER, description="Provider preference")
     temperature: float = Field(default=0.1, ge=0.0, le=1.0, description="Model temperature")
@@ -196,6 +200,7 @@ def get_effective_config(
     api_url: str | None = None,
     model: str | None = None,
     eval_model: str | None = None,
+    eval_provider: str | None = None,
     provider: str | None = None,
     temperature: float | None = None,
     schema_version: str | None = None,
@@ -209,6 +214,7 @@ def get_effective_config(
         api_url: Override API URL
         model: Override model (if non-default, clears provider unless explicitly set)
         eval_model: Override evaluation model (for consistent benchmarking)
+        eval_provider: Override provider for evaluation model (e.g., "Cerebras")
         provider: Override provider preference (e.g., "Cerebras")
         temperature: Override temperature
         schema_version: Override schema version
@@ -240,6 +246,8 @@ def get_effective_config(
             config.models.provider = None
     if eval_model:
         config.models.evaluation = eval_model
+    if eval_provider is not None:
+        config.models.eval_provider = eval_provider if eval_provider else None
     if provider is not None:  # Allow empty string to clear provider
         config.models.provider = provider if provider else None
 

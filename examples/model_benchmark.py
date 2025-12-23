@@ -47,6 +47,7 @@ MAX_VALIDATION_ATTEMPTS = 5
 # Evaluation model - used consistently across all benchmarks for fair comparison
 # This model evaluates annotation quality (is_faithful, is_complete)
 EVAL_MODEL = "qwen/qwen3-235b-a22b-2507"
+EVAL_PROVIDER = "Cerebras"  # Use Cerebras for fast Qwen inference
 
 # Models to benchmark (from GitHub issue #64)
 # https://github.com/Annotation-Garden/HEDit/issues/64#issuecomment-3684641652
@@ -355,6 +356,7 @@ def run_hedit_annotate(
     model_id: str,
     provider: str | None = None,
     eval_model: str | None = None,
+    eval_provider: str | None = None,
     schema_version: str = "8.4.0",
     max_attempts: int = 5,
     run_assessment: bool = True,
@@ -366,6 +368,7 @@ def run_hedit_annotate(
         model_id: Model ID (e.g., "openai/gpt-oss-120b")
         provider: Provider preference (e.g., "Cerebras")
         eval_model: Model for evaluation/assessment (for consistent benchmarking)
+        eval_provider: Provider for evaluation model (e.g., "Cerebras")
         schema_version: HED schema version
         max_attempts: Maximum validation attempts
         run_assessment: Whether to run completeness assessment
@@ -391,6 +394,9 @@ def run_hedit_annotate(
 
     if eval_model:
         cmd.extend(["--eval-model", eval_model])
+
+    if eval_provider:
+        cmd.extend(["--eval-provider", eval_provider])
 
     if provider:
         cmd.extend(["--provider", provider])
@@ -458,6 +464,7 @@ def run_hedit_annotate_image(
     model_id: str,
     provider: str | None = None,
     eval_model: str | None = None,
+    eval_provider: str | None = None,
     schema_version: str = "8.4.0",
     max_attempts: int = 5,
     run_assessment: bool = True,
@@ -469,6 +476,7 @@ def run_hedit_annotate_image(
         model_id: Model ID
         provider: Provider preference
         eval_model: Model for evaluation/assessment (for consistent benchmarking)
+        eval_provider: Provider for evaluation model (e.g., "Cerebras")
         schema_version: HED schema version
         max_attempts: Maximum validation attempts
         run_assessment: Whether to run completeness assessment
@@ -494,6 +502,9 @@ def run_hedit_annotate_image(
 
     if eval_model:
         cmd.extend(["--eval-model", eval_model])
+
+    if eval_provider:
+        cmd.extend(["--eval-provider", eval_provider])
 
     if provider:
         cmd.extend(["--provider", provider])
@@ -589,6 +600,7 @@ class ModelBenchmark:
                 model_id=model_id,
                 provider=provider,
                 eval_model=EVAL_MODEL,
+                eval_provider=EVAL_PROVIDER,
                 schema_version=SCHEMA_VERSION,
                 max_attempts=1,  # Single attempt for warmup
                 run_assessment=False,  # Skip assessment for speed
@@ -642,6 +654,7 @@ class ModelBenchmark:
                         model_id=model_id,
                         provider=provider,
                         eval_model=EVAL_MODEL,
+                        eval_provider=EVAL_PROVIDER,
                         schema_version=SCHEMA_VERSION,
                         max_attempts=MAX_VALIDATION_ATTEMPTS,
                         run_assessment=True,
@@ -658,6 +671,7 @@ class ModelBenchmark:
                         model_id=model_id,
                         provider=provider,
                         eval_model=EVAL_MODEL,
+                        eval_provider=EVAL_PROVIDER,
                         schema_version=SCHEMA_VERSION,
                         max_attempts=MAX_VALIDATION_ATTEMPTS,
                         run_assessment=True,

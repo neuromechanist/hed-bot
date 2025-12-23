@@ -27,6 +27,7 @@ class APIExecutionBackend(ExecutionBackend):
         api_key: str | None = None,
         model: str | None = None,
         eval_model: str | None = None,
+        eval_provider: str | None = None,
         vision_model: str | None = None,
         provider: str | None = None,
         temperature: float | None = None,
@@ -38,6 +39,7 @@ class APIExecutionBackend(ExecutionBackend):
             api_key: OpenRouter API key for BYOK mode
             model: Model for text annotation
             eval_model: Model for evaluation/assessment agents (for fair benchmarking)
+            eval_provider: Provider for evaluation model (e.g., Cerebras for qwen)
             vision_model: Model for image annotation
             provider: Provider preference (e.g., "Cerebras")
             temperature: LLM temperature (0.0-1.0)
@@ -46,17 +48,18 @@ class APIExecutionBackend(ExecutionBackend):
         self._api_key = api_key
         self._model = model
         self._eval_model = eval_model
+        self._eval_provider = eval_provider
         self._vision_model = vision_model
         self._provider = provider
         self._temperature = temperature
 
         # Create underlying HTTP client
-        # Note: eval_model support in API is pending - stored for future use
         self._client = HEDitClient(
             api_url=api_url,
             api_key=api_key,
             model=model,
             eval_model=eval_model,
+            eval_provider=eval_provider,
             provider=provider,
             temperature=temperature,
         )

@@ -66,6 +66,7 @@ class LocalExecutionBackend(ExecutionBackend):
         api_key: str | None = None,
         model: str | None = None,
         eval_model: str | None = None,
+        eval_provider: str | None = None,
         vision_model: str | None = None,
         provider: str | None = None,
         temperature: float = 0.1,
@@ -78,6 +79,7 @@ class LocalExecutionBackend(ExecutionBackend):
             model: Model for text annotation (default: openai/gpt-oss-120b)
             eval_model: Model for evaluation/assessment agents (default: same as model).
                        Use a consistent model like qwen/qwen3-235b-a22b for fair benchmarking.
+            eval_provider: Provider for evaluation model (e.g., Cerebras for qwen models)
             vision_model: Model for image annotation (default: qwen/qwen3-vl-30b-a3b-instruct)
             provider: Provider preference (cleared if custom model specified)
             temperature: LLM temperature (0.0-1.0)
@@ -88,6 +90,7 @@ class LocalExecutionBackend(ExecutionBackend):
         self._api_key = api_key
         self._model = model or "openai/gpt-oss-120b"
         self._eval_model = eval_model  # None means use same as annotation model
+        self._eval_provider = eval_provider  # Provider for eval model (e.g., Cerebras)
         self._vision_model = vision_model or "qwen/qwen3-vl-30b-a3b-instruct"
         self._temperature = temperature
         self._schema_dir = Path(schema_dir) if schema_dir else None
@@ -162,7 +165,7 @@ class LocalExecutionBackend(ExecutionBackend):
                     model=self._eval_model,
                     api_key=self._api_key,
                     temperature=self._temperature,
-                    provider=None,  # Don't use Cerebras for eval model (may not support it)
+                    provider=self._eval_provider,  # Use specified provider (e.g., Cerebras)
                     user_id=user_id,
                 )
             else:
