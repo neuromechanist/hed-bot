@@ -40,6 +40,7 @@ MAX_VALIDATION_ATTEMPTS = 5
 
 # Vision model - same for all benchmarks (describes the image)
 VISION_MODEL = "qwen/qwen3-vl-30b-a3b-instruct"
+VISION_PROVIDER = "deepinfra/fp8"  # Required provider for this vision model
 
 # Evaluation model - consistent across all benchmarks for fair comparison
 EVAL_MODEL = "qwen/qwen3-235b-a22b-2507"
@@ -144,7 +145,7 @@ def run_vision_description(image_path: Path) -> tuple[str, dict[str, Any]]:
             model=VISION_MODEL,
             api_key=OPENROUTER_API_KEY,
             temperature=0.3,
-            provider=None,
+            provider=VISION_PROVIDER,
             user_id=user_id,
         )
 
