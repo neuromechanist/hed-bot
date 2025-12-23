@@ -928,8 +928,8 @@
             opacity: 1;
         }
 
-        /* Telemetry Notice - fixed at absolute bottom */
-        .telemetry-notice {
+        /* Model Info & Telemetry Notice - fixed at absolute bottom */
+        .model-info {
             display: flex;
             align-items: baseline;
             justify-content: center;
@@ -938,6 +938,28 @@
             font-size: 11px;
             color: var(--text-muted);
             border-top: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            transition: all 0.3s ease;
+            margin: 0;
+        }
+
+        .model-info a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .model-info a:hover {
+            text-decoration: underline;
+        }
+
+        .telemetry-notice {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 8px;
+            padding: 4px 16px;
+            font-size: 11px;
+            color: var(--text-muted);
             background: var(--bg-tertiary);
             transition: all 0.3s ease;
             margin: 0;
@@ -1175,7 +1197,10 @@ Example: A red circle appears on the left side of the screen and the participant
         </div>
     </div>
 
-    <!-- Telemetry Notice - outside container for absolute bottom positioning -->
+    <!-- Model Info & Telemetry Notice - outside container for absolute bottom positioning -->
+    <div class="model-info">
+        <span>Models: <a href="https://openrouter.ai/mistralai/mistral-small-3.2-24b-instruct" target="_blank" rel="noopener noreferrer">Mistral-Small-3.2</a> (annotation) · <a href="https://openrouter.ai/qwen/qwen3-vl-30b-a3b-instruct" target="_blank" rel="noopener noreferrer">Qwen3-VL-30B</a> (vision) · <a href="https://openrouter.ai/qwen/qwen3-235b-a22b-2507" target="_blank" rel="noopener noreferrer">Qwen3-235B</a> (evaluation)</span>
+    </div>
     <div class="telemetry-notice">
         <span>Annotations may be recorded to improve the service.</span>
         <label class="telemetry-toggle" title="Toggle telemetry collection">
