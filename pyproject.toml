@@ -151,7 +151,7 @@ disallow_untyped_defs = true
 
 [tool.codespell]
 # Ref: https://github.com/codespell-project/codespell#using-a-config-file
-skip = '.git*,*.svg,package-lock.json'
+skip = '.git*,*.svg,package-lock.json,examples/*'
 check-hidden = true
 # ignore-regex = ''
 # ignore-words-list = ''
