@@ -23,6 +23,48 @@ def print_json(data: dict[str, Any]) -> None:
     print(json.dumps(data, indent=2))
 
 
+def normalize_annotation_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize annotation result to a clean, flat JSON structure.
+
+    Args:
+        result: Raw result from executor (may have nested metadata)
+
+    Returns:
+        Flattened result with consistent field names
+    """
+    metadata = result.get("metadata", {})
+
+    # Extract validation errors/warnings from various possible locations
+    validation_errors = []
+    validation_warnings = []
+
+    # Check validation_messages (may contain both errors and warnings)
+    for msg in result.get("validation_messages", []):
+        if isinstance(msg, str):
+            if msg.startswith("[ERROR]"):
+                validation_errors.append(msg.replace("[ERROR] ", ""))
+            elif msg.startswith("[WARNING]"):
+                validation_warnings.append(msg.replace("[WARNING] ", ""))
+            else:
+                validation_errors.append(msg)
+
+    # Also check direct error/warning lists
+    validation_errors.extend(result.get("validation_errors", []))
+    validation_warnings.extend(result.get("validation_warnings", []))
+
+    return {
+        "annotation": result.get("hed_string") or result.get("annotation", ""),
+        "is_valid": result.get("is_valid", False),
+        "is_faithful": metadata.get("is_faithful") or result.get("is_faithful"),
+        "is_complete": metadata.get("is_complete") or result.get("is_complete"),
+        "validation_attempts": metadata.get("validation_attempts")
+        or result.get("validation_attempts", 0),
+        "validation_errors": validation_errors,
+        "validation_warnings": validation_warnings,
+        "status": result.get("status", "unknown"),
+    }
+
+
 def print_annotation_result(
     result: dict[str, Any],
     output_format: str = "text",
@@ -36,7 +78,9 @@ def print_annotation_result(
         verbose: Include extra details
     """
     if output_format == "json":
-        print_json(result)
+        # Normalize to clean, flat structure
+        normalized = normalize_annotation_result(result)
+        print_json(normalized)
         return
 
     # Text format with Rich
@@ -125,7 +169,10 @@ def print_image_annotation_result(
         verbose: Include extra details
     """
     if output_format == "json":
-        print_json(result)
+        # Normalize and add image description
+        normalized = normalize_annotation_result(result)
+        normalized["image_description"] = result.get("description", "")
+        print_json(normalized)
         return
 
     # Text format - show image description first, then annotation
