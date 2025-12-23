@@ -36,9 +36,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import litellm
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Suppress LiteLLM debug output
+litellm.suppress_debug_info = True
 
 # Configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
