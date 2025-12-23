@@ -43,6 +43,7 @@ class HEDitClient:
         provider: str | None = None,
         temperature: float | None = None,
         timeout: httpx.Timeout = DEFAULT_TIMEOUT,
+        user_id: str | None = None,
     ):
         """Initialize client.
 
@@ -55,6 +56,7 @@ class HEDitClient:
             provider: Provider preference (e.g., "Cerebras")
             temperature: LLM temperature (0.0-1.0)
             timeout: Request timeout settings
+            user_id: Custom user ID for cache optimization (default: derived from API key)
         """
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
@@ -64,6 +66,7 @@ class HEDitClient:
         self.provider = provider
         self.temperature = temperature
         self.timeout = timeout
+        self.user_id = user_id
 
     def _get_headers(self) -> dict[str, str]:
         """Get request headers with BYOK configuration."""
@@ -85,6 +88,9 @@ class HEDitClient:
             headers["X-OpenRouter-Provider"] = self.provider
         if self.temperature is not None:
             headers["X-OpenRouter-Temperature"] = str(self.temperature)
+        # Custom user ID for cache optimization
+        if self.user_id:
+            headers["X-User-Id"] = self.user_id
         return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:

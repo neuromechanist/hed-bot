@@ -94,6 +94,10 @@ class SettingsConfig(BaseModel):
     schema_version: str = Field(default="8.4.0", description="HED schema version")
     max_validation_attempts: int = Field(default=5, ge=1, le=10, description="Max retries")
     run_assessment: bool = Field(default=False, description="Run assessment by default")
+    user_id: str | None = Field(
+        default=None,
+        description="Custom user ID for cache optimization (default: auto-generated machine ID)",
+    )
 
 
 class OutputConfig(BaseModel):
@@ -223,6 +227,7 @@ def get_effective_config(
     schema_version: str | None = None,
     output_format: str | None = None,
     mode: str | None = None,
+    user_id: str | None = None,
 ) -> tuple[CLIConfig, str | None]:
     """Get effective config with command-line overrides applied.
 
@@ -237,6 +242,7 @@ def get_effective_config(
         schema_version: Override schema version
         output_format: Override output format
         mode: Override execution mode ("api" or "standalone")
+        user_id: Override user ID for cache optimization
 
     Returns:
         Tuple of (effective config, effective API key)
@@ -278,6 +284,8 @@ def get_effective_config(
         if mode not in ("api", "standalone"):
             raise ValueError(f"Invalid mode: {mode}. Must be 'api' or 'standalone'")
         config.execution.mode = mode
+    if user_id:
+        config.settings.user_id = user_id
 
     return config, effective_key
 

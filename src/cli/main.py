@@ -154,9 +154,21 @@ ApiModeOption = Annotated[
     ),
 ]
 
+UserIdOption = Annotated[
+    str | None,
+    typer.Option(
+        "--user-id",
+        help="Custom user ID for cache optimization (default: auto-generated machine ID)",
+        hidden=True,  # Not advertised, but available
+    ),
+]
+
 
 def get_executor(
-    config: CLIConfig, api_key: str | None, mode_override: str | None = None
+    config: CLIConfig,
+    api_key: str | None,
+    mode_override: str | None = None,
+    user_id: str | None = None,
 ) -> ExecutionBackend:
     """Get the appropriate execution backend based on configuration.
 
@@ -164,6 +176,7 @@ def get_executor(
         config: CLI configuration
         api_key: OpenRouter API key
         mode_override: Override mode from --standalone/--api flags
+        user_id: Custom user ID for cache optimization (default: auto-generated)
 
     Returns:
         Configured ExecutionBackend instance
@@ -184,6 +197,7 @@ def get_executor(
             vision_model=config.models.vision,
             provider=config.models.provider,
             temperature=config.models.temperature,
+            user_id=user_id,
         )
 
         if not executor.is_available():
@@ -206,6 +220,7 @@ def get_executor(
             vision_model=config.models.vision,
             provider=config.models.provider,
             temperature=config.models.temperature,
+            user_id=user_id,
         )
 
 
@@ -396,6 +411,7 @@ def annotate(
     standalone: StandaloneOption = False,
     api_mode: ApiModeOption = False,
     verbose: VerboseOption = False,
+    user_id: UserIdOption = None,
 ) -> None:
     """Generate HED annotation from a text description.
 
@@ -428,6 +444,7 @@ def annotate(
         temperature=temperature,
         schema_version=schema_version,
         output_format=output_format,
+        user_id=user_id,
     )
 
     if not effective_key:
@@ -443,7 +460,7 @@ def annotate(
         output.print_progress(f"Generating HED annotation ({mode_name} mode)")
 
     try:
-        executor = get_executor(config, effective_key, mode_override)
+        executor = get_executor(config, effective_key, mode_override, config.settings.user_id)
         result = executor.annotate(
             description=description,
             schema_version=schema_version or config.settings.schema_version,
@@ -503,6 +520,7 @@ def annotate_image(
     standalone: StandaloneOption = False,
     api_mode: ApiModeOption = False,
     verbose: VerboseOption = False,
+    user_id: UserIdOption = None,
 ) -> None:
     """Generate HED annotation from an image.
 
@@ -541,6 +559,7 @@ def annotate_image(
         temperature=temperature,
         schema_version=schema_version,
         output_format=output_format,
+        user_id=user_id,
     )
 
     if not effective_key:
@@ -555,7 +574,7 @@ def annotate_image(
         output.print_progress(f"Analyzing image and generating HED annotation ({mode_name} mode)")
 
     try:
-        executor = get_executor(config, effective_key, mode_override)
+        executor = get_executor(config, effective_key, mode_override, config.settings.user_id)
         result = executor.annotate_image(
             image_path=image,
             prompt=prompt,

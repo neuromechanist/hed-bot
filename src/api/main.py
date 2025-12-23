@@ -78,6 +78,7 @@ def create_byok_workflow(
     model: str | None = None,
     provider: str | None = None,
     temperature: float | None = None,
+    user_id_override: str | None = None,
 ) -> HedAnnotationWorkflow:
     """Create a workflow instance using the user's OpenRouter key (BYOK mode).
 
@@ -86,6 +87,7 @@ def create_byok_workflow(
         model: Override model for all agents (uses server default if None)
         provider: Override provider preference (uses server default if None)
         temperature: Override LLM temperature (uses server default if None)
+        user_id_override: Custom user ID for cache optimization (overrides API key derived ID)
 
     Returns:
         Configured HedAnnotationWorkflow using the user's key and model settings
@@ -129,8 +131,9 @@ def create_byok_workflow(
     # Evaluation always uses its dedicated provider (Cerebras)
     evaluation_provider = default_evaluation_provider
 
-    # Derive user ID for cache optimization (each API key gets own cache lane)
-    user_id = _derive_user_id(openrouter_key)
+    # Use custom user_id if provided, otherwise derive from API key
+    # Custom user_id enables shared caching (e.g., all frontend users share cache)
+    user_id = user_id_override or _derive_user_id(openrouter_key)
 
     # Create LLMs with user's key and settings
     annotation_llm = create_openrouter_llm(
@@ -171,6 +174,7 @@ def create_byok_vision_agent(
     vision_model: str | None = None,
     provider: str | None = None,
     temperature: float | None = None,
+    user_id_override: str | None = None,
 ) -> VisionAgent:
     """Create a vision agent instance using the user's OpenRouter key (BYOK mode).
 
@@ -179,6 +183,7 @@ def create_byok_vision_agent(
         vision_model: Override vision model (uses server default if None)
         provider: Override provider preference (uses server default if None)
         temperature: Override temperature (uses 0.3 default if None)
+        user_id_override: Custom user ID for cache optimization (overrides API key derived ID)
 
     Returns:
         Configured VisionAgent using the user's key and model settings
@@ -201,8 +206,8 @@ def create_byok_vision_agent(
     else:
         actual_provider = default_vision_provider
 
-    # Derive user ID for cache optimization
-    user_id = _derive_user_id(openrouter_key)
+    # Use custom user_id if provided, otherwise derive from API key
+    user_id = user_id_override or _derive_user_id(openrouter_key)
 
     vision_llm = create_openrouter_llm(
         model=actual_model,
@@ -570,12 +575,16 @@ async def annotate(
             except ValueError:
                 pass  # Invalid header value, use default
 
+        # Custom user_id for cache optimization (e.g., "frontend-0.6.4" for shared frontend cache)
+        user_id_override = req.headers.get("x-user-id")
+
         try:
             active_workflow = create_byok_workflow(
                 openrouter_key,
                 model=model,
                 provider=provider,
                 temperature=temperature,
+                user_id_override=user_id_override,
             )
         except Exception as e:
             raise HTTPException(
@@ -701,18 +710,23 @@ async def annotate_from_image(
             except ValueError:
                 pass  # Invalid header value, use default
 
+        # Custom user_id for cache optimization (e.g., "frontend-0.6.4" for shared frontend cache)
+        user_id_override = req.headers.get("x-user-id")
+
         try:
             active_workflow = create_byok_workflow(
                 openrouter_key,
                 model=model,
                 provider=provider,
                 temperature=temperature,
+                user_id_override=user_id_override,
             )
             active_vision_agent = create_byok_vision_agent(
                 openrouter_key,
                 vision_model=vision_model,
                 provider=provider,
                 temperature=temperature,
+                user_id_override=user_id_override,
             )
         except Exception as e:
             raise HTTPException(

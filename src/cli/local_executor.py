@@ -71,6 +71,7 @@ class LocalExecutionBackend(ExecutionBackend):
         provider: str | None = None,
         temperature: float = 0.1,
         schema_dir: Path | str | None = None,
+        user_id: str | None = None,
     ):
         """Initialize local execution backend.
 
@@ -84,6 +85,7 @@ class LocalExecutionBackend(ExecutionBackend):
             provider: Provider preference (cleared if custom model specified)
             temperature: LLM temperature (0.0-1.0)
             schema_dir: Optional directory with JSON schemas (None = fetch from GitHub)
+            user_id: Custom user ID for cache optimization (default: auto-generated machine ID)
         """
         # Import defaults from config
         from src.cli.config import (
@@ -104,6 +106,7 @@ class LocalExecutionBackend(ExecutionBackend):
         self._vision_provider = DEFAULT_VISION_PROVIDER
         self._temperature = temperature
         self._schema_dir = Path(schema_dir) if schema_dir else None
+        self._user_id = user_id  # Custom user ID (None = use auto-generated machine ID)
 
         # Handle provider logic for annotation model:
         # clear if custom model specified without explicit provider
@@ -155,8 +158,8 @@ class LocalExecutionBackend(ExecutionBackend):
             from src.cli.config import get_machine_id
             from src.utils.openrouter_llm import create_openrouter_llm
 
-            # Get machine ID for cache optimization
-            user_id = get_machine_id()
+            # Use custom user_id if provided, otherwise auto-generate
+            user_id = self._user_id or get_machine_id()
 
             # Create annotation LLM with user's key
             annotation_llm = create_openrouter_llm(
@@ -202,8 +205,8 @@ class LocalExecutionBackend(ExecutionBackend):
             from src.cli.config import get_machine_id
             from src.utils.openrouter_llm import create_openrouter_llm
 
-            # Get machine ID for cache optimization
-            user_id = get_machine_id()
+            # Use custom user_id if provided, otherwise auto-generate
+            user_id = self._user_id or get_machine_id()
 
             vision_llm = create_openrouter_llm(
                 model=self._vision_model,

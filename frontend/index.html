@@ -1212,6 +1212,9 @@ Example: A red circle appears on the left side of the screen and the participant
 
     <script src="config.js"></script>
     <script>
+        // Frontend version - used for cache optimization (X-User-Id header)
+        const FRONTEND_VERSION = '0.6.4';
+
         // Theme Toggle Functionality (cycles: light -> system -> dark -> light)
         const themes = ['light', 'system', 'dark'];
         let currentTheme = 'system';
@@ -1532,6 +1535,7 @@ Example: A red circle appears on the left side of the screen and the participant
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-User-Id': `frontend-${FRONTEND_VERSION}`,
                     },
                     body: JSON.stringify(payload)
                 });
@@ -1644,6 +1648,7 @@ Example: A red circle appears on the left side of the screen and the participant
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-User-Id': `frontend-${FRONTEND_VERSION}`,
                     },
                     body: JSON.stringify(payload)
                 });
@@ -1872,6 +1877,7 @@ Example: A red circle appears on the left side of the screen and the participant
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-User-Id': `frontend-${FRONTEND_VERSION}`,
                     },
                     body: JSON.stringify(feedbackPayload)
                 });
