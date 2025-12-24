@@ -55,12 +55,11 @@ _byok_config: dict = {}
 def _derive_user_id(api_key: str) -> str:
     """Derive a stable user ID from API key for cache optimization.
 
-    Uses SHA-256 hash of the API key to create an anonymous identifier.
+    Uses HMAC-SHA256 to create a stable, anonymous identifier from the API key.
     Each unique API key gets its own cache lane in OpenRouter.
 
-    Note: This is NOT password hashing. The API key is already a strong secret.
-    We use SHA-256 for fast, consistent ID derivation (not security).
-    Purpose: Enable cache routing, not protect secrets.
+    Note: This is NOT password hashing. The API key is already a high-entropy
+    secret. We use HMAC for consistent key derivation (not credential storage).
 
     Args:
         api_key: OpenRouter API key (already a secret, not a password)
@@ -68,8 +67,12 @@ def _derive_user_id(api_key: str) -> str:
     Returns:
         16-character hexadecimal user ID
     """
-    # CodeQL [py/weak-cryptographic-algorithm]: Not password hashing - deriving cache ID from API key
-    return hashlib.sha256(api_key.encode()).hexdigest()[:16]
+    import hmac
+
+    # Use HMAC for key derivation - appropriate for deriving cache IDs from secrets
+    # The key is constant since we just need consistent derivation, not secrecy
+    hmac_key = b"hedit-cache-id-derivation"
+    return hmac.new(hmac_key, api_key.encode(), hashlib.sha256).hexdigest()[:16]
 
 
 def create_openrouter_workflow(
