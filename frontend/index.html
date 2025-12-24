@@ -1532,57 +1532,196 @@ Example: A red circle appears on the left side of the screen and the participant
             updateProgress('Analyzing image...', getProgressSteps('starting'));
 
             try {
-                // Get Turnstile token for bot protection
-                const turnstileToken = await getTurnstileToken();
-
-                const payload = {
-                    image: uploadedImageBase64,
-                    schema_version: schema,
-                    max_validation_attempts: maxAttempts,
-                    run_assessment: runAssessment,
-                    telemetry_enabled: isTelemetryEnabled()
-                };
-
-                if (visionPrompt) {
-                    payload.prompt = visionPrompt;
-                }
-
-                // Include Turnstile token if available
-                if (turnstileToken) {
-                    payload.cf_turnstile_response = turnstileToken;
-                }
-
-                const response = await fetch(`${API_URL}/annotate-from-image`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-Id': `frontend-${FRONTEND_VERSION}`,
-                        'X-OpenRouter-Model': selectedModel,
-                        'X-OpenRouter-Provider': selectedProvider,
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.detail || `Server error: ${response.status}`);
-                }
-
-                const result = await response.json();
-
-                // Store for feedback
-                lastResultData = result;
-                lastInputDescription = result.image_description; // Use generated description
-
-                // Display results
-                displayImageAnnotationResults(result);
-
+                // Try streaming first, fall back to non-streaming
+                await generateFromImageStreaming(visionPrompt, schema, maxAttempts, runAssessment, selectedModel, selectedProvider);
             } catch (error) {
-                displayError(error.message);
-            } finally {
-                document.getElementById('progressStatus').classList.remove('active');
-                document.getElementById('generateBtn-image').disabled = false;
+                // If streaming fails, try non-streaming fallback
+                console.warn('Streaming failed, trying fallback:', error);
+                try {
+                    await generateFromImageFallback(visionPrompt, schema, maxAttempts, runAssessment, selectedModel, selectedProvider);
+                } catch (fallbackError) {
+                    displayError(fallbackError.message);
+                    document.getElementById('progressStatus').classList.remove('active');
+                    document.getElementById('generateBtn-image').disabled = false;
+                }
             }
+        }
+
+        async function generateFromImageStreaming(visionPrompt, schema, maxAttempts, runAssessment, selectedModel, selectedProvider) {
+            // Get Turnstile token for bot protection
+            const turnstileToken = await getTurnstileToken();
+
+            const payload = {
+                image: uploadedImageBase64,
+                schema_version: schema,
+                max_validation_attempts: maxAttempts,
+                run_assessment: runAssessment,
+                telemetry_enabled: isTelemetryEnabled()
+            };
+
+            if (visionPrompt) {
+                payload.prompt = visionPrompt;
+            }
+
+            if (turnstileToken) {
+                payload.cf_turnstile_response = turnstileToken;
+            }
+
+            const response = await fetch(`${API_URL}/annotate-from-image/stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': `frontend-${FRONTEND_VERSION}`,
+                    'X-OpenRouter-Model': selectedModel,
+                    'X-OpenRouter-Provider': selectedProvider,
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Read the streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Parse SSE events from buffer
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                let currentEvent = null;
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                        currentEvent = line.substring(7);
+                    } else if (line.startsWith('data: ') && currentEvent) {
+                        const data = JSON.parse(line.substring(6));
+                        handleImageStreamEvent(currentEvent, data);
+                        currentEvent = null;
+                    }
+                }
+            }
+
+            // Flush decoder and process any remaining data (Safari compatibility)
+            buffer += decoder.decode(); // Flush remaining bytes
+            if (buffer.trim()) {
+                const lines = buffer.split('\n');
+                let currentEvent = null;
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                        currentEvent = line.substring(7);
+                    } else if (line.startsWith('data: ') && currentEvent) {
+                        try {
+                            const data = JSON.parse(line.substring(6));
+                            handleImageStreamEvent(currentEvent, data);
+                        } catch (e) {
+                            console.warn('Failed to parse SSE data:', line);
+                        }
+                        currentEvent = null;
+                    }
+                }
+            }
+
+            document.getElementById('progressStatus').classList.remove('active');
+            document.getElementById('generateBtn-image').disabled = false;
+        }
+
+        function handleImageStreamEvent(eventType, data) {
+            switch (eventType) {
+                case 'progress':
+                    // Map image-specific stages
+                    let stage = data.stage;
+                    if (stage === 'vision') stage = 'starting'; // Vision is first step
+                    updateProgress(data.message, getProgressSteps(stage));
+                    break;
+                case 'image_description':
+                    // Store the image description for later display
+                    lastInputDescription = data.description;
+                    updateProgress('Image analyzed, generating annotation...', getProgressSteps('annotating'));
+                    break;
+                case 'validation':
+                    if (data.valid) {
+                        updateProgress('Validation passed!', getProgressSteps('evaluating'));
+                    } else {
+                        const attemptMsg = `Attempt ${data.attempt}: ${data.message}`;
+                        updateProgress(attemptMsg, getProgressSteps('validating'));
+                    }
+                    break;
+                case 'result':
+                    // Add image_description to result if we captured it
+                    if (lastInputDescription && !data.image_description) {
+                        data.image_description = lastInputDescription;
+                    }
+                    lastResultData = data;
+                    displayImageAnnotationResults(data);
+                    break;
+                case 'error':
+                    displayError(data.message);
+                    document.getElementById('progressStatus').classList.remove('active');
+                    document.getElementById('generateBtn-image').disabled = false;
+                    break;
+                case 'done':
+                    // Streaming complete
+                    break;
+            }
+        }
+
+        async function generateFromImageFallback(visionPrompt, schema, maxAttempts, runAssessment, selectedModel, selectedProvider) {
+            updateProgress('Analyzing image...', getProgressSteps('starting'));
+
+            // Get Turnstile token for bot protection
+            const turnstileToken = await getTurnstileToken();
+
+            const payload = {
+                image: uploadedImageBase64,
+                schema_version: schema,
+                max_validation_attempts: maxAttempts,
+                run_assessment: runAssessment,
+                telemetry_enabled: isTelemetryEnabled()
+            };
+
+            if (visionPrompt) {
+                payload.prompt = visionPrompt;
+            }
+
+            if (turnstileToken) {
+                payload.cf_turnstile_response = turnstileToken;
+            }
+
+            const response = await fetch(`${API_URL}/annotate-from-image`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': `frontend-${FRONTEND_VERSION}`,
+                    'X-OpenRouter-Model': selectedModel,
+                    'X-OpenRouter-Provider': selectedProvider,
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Server error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Store for feedback
+            lastResultData = result;
+            lastInputDescription = result.image_description;
+
+            // Display results
+            displayImageAnnotationResults(result);
+
+            document.getElementById('progressStatus').classList.remove('active');
+            document.getElementById('generateBtn-image').disabled = false;
         }
 
         function displayImageAnnotationResults(result) {
