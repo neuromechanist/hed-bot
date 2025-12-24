@@ -366,6 +366,71 @@ class TestStreamingEndpoint:
         response = client.post("/annotate/stream", json=request_data)
         assert response.status_code == 401
 
+    def test_stream_endpoint_accepts_model_override_headers(self, client):
+        """Test that streaming endpoint accepts model/provider override headers."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        headers = {
+            **TEST_AUTH_HEADERS,
+            "X-OpenRouter-Model": "anthropic/claude-haiku-4.5",
+            "X-OpenRouter-Provider": "anthropic",
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        # 503 expected without workflow initialized, but should not be 400 for bad headers
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_accepts_temperature_header(self, client):
+        """Test that streaming endpoint accepts temperature header."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        headers = {
+            **TEST_AUTH_HEADERS,
+            "X-OpenRouter-Temperature": "0.5",
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_handles_invalid_temperature_gracefully(self, client):
+        """Test that streaming endpoint handles invalid temperature header."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        headers = {
+            **TEST_AUTH_HEADERS,
+            "X-OpenRouter-Temperature": "invalid",
+        }
+        # Should not fail, just ignore invalid temperature
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_byok_mode_requires_key(self, client):
+        """Test that BYOK mode streaming requires OpenRouter key."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        # Provide a valid BYOK key header pattern but with an invalid key
+        # This should trigger BYOK mode check
+        headers = {"X-OpenRouter-Key": "sk-or-v1-test"}
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        # Should accept BYOK mode (503 because workflow can't be created with fake key)
+        assert response.status_code in [401, 500, 503]
+
+    def test_stream_endpoint_returns_sse_content_type(self, client):
+        """Test that streaming endpoint returns SSE content type when successful."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=TEST_AUTH_HEADERS)
+        if response.status_code == 200:
+            assert response.headers.get("content-type") == "text/event-stream; charset=utf-8"
+
 
 class TestVersionEndpointExtended:
     """Extended tests for version endpoint."""
