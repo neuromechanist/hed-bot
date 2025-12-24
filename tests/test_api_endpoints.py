@@ -431,6 +431,53 @@ class TestStreamingEndpoint:
         if response.status_code == 200:
             assert response.headers.get("content-type") == "text/event-stream; charset=utf-8"
 
+    def test_stream_endpoint_with_user_id_header(self, client):
+        """Test that streaming endpoint accepts user ID header."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        headers = {
+            **TEST_AUTH_HEADERS,
+            "X-User-Id": "frontend-test-0.6.6",
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_with_eval_model_headers(self, client):
+        """Test that streaming endpoint accepts eval model headers."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+        }
+        headers = {
+            **TEST_AUTH_HEADERS,
+            "X-OpenRouter-Eval-Model": "qwen/qwen3-235b",
+            "X-OpenRouter-Eval-Provider": "Cerebras",
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=headers)
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_with_assessment_flag(self, client):
+        """Test that streaming endpoint accepts run_assessment flag."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+            "run_assessment": True,
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=TEST_AUTH_HEADERS)
+        assert response.status_code in [200, 503]
+
+    def test_stream_endpoint_with_max_validation_attempts(self, client):
+        """Test that streaming endpoint accepts max_validation_attempts."""
+        request_data = {
+            "description": "A red circle appears",
+            "schema_version": "8.3.0",
+            "max_validation_attempts": 5,
+        }
+        response = client.post("/annotate/stream", json=request_data, headers=TEST_AUTH_HEADERS)
+        assert response.status_code in [200, 503]
+
 
 class TestVersionEndpointExtended:
     """Extended tests for version endpoint."""
