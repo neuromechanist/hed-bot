@@ -73,97 +73,144 @@ def _derive_user_id(api_key: str) -> str:
     return hashlib.sha256(api_key.encode()).hexdigest()[:16]
 
 
-def create_byok_workflow(
-    openrouter_key: str,
-    model: str | None = None,
-    provider: str | None = None,
+def create_openrouter_workflow(
+    api_key: str,
+    annotation_model: str | None = None,
+    annotation_provider: str | None = None,
+    eval_model: str | None = None,
+    eval_provider: str | None = None,
     temperature: float | None = None,
-    user_id_override: str | None = None,
+    user_id: str | None = None,
+    schema_dir: str | Path | None = None,
+    validator_path: str | Path | None = None,
+    use_js_validator: bool = True,
 ) -> HedAnnotationWorkflow:
-    """Create a workflow instance using the user's OpenRouter key (BYOK mode).
+    """Create a workflow with OpenRouter LLMs.
+
+    Unified function for both BYOK and server modes. Applies defaults from
+    environment variables, then overrides with provided parameters.
 
     Args:
-        openrouter_key: User's OpenRouter API key
-        model: Override model for all agents (uses server default if None)
-        provider: Override provider preference (uses server default if None)
-        temperature: Override LLM temperature (uses server default if None)
-        user_id_override: Custom user ID for cache optimization (overrides API key derived ID)
+        api_key: OpenRouter API key
+        annotation_model: Model for annotation (default: ANNOTATION_MODEL env or Claude Haiku 4.5)
+        annotation_provider: Provider for annotation model (default: ANNOTATION_PROVIDER env or "anthropic")
+        eval_model: Model for eval/assessment/feedback (default: EVALUATION_MODEL env or Qwen3-235B)
+        eval_provider: Provider for eval models (default: EVALUATION_PROVIDER env or "Cerebras")
+        temperature: LLM temperature (default: 0.1)
+        user_id: User ID for cache optimization (derived from API key if not provided)
+        schema_dir: Path to HED schemas (None = fetch from GitHub)
+        validator_path: Path to hed-javascript (None = use Python validator)
+        use_js_validator: Whether to use JavaScript validator
 
     Returns:
-        Configured HedAnnotationWorkflow using the user's key and model settings
+        Configured HedAnnotationWorkflow
     """
-    global _byok_config
-
-    # Get configuration (cached from server startup)
-    schema_dir = _byok_config.get("schema_dir")
-    validator_path = _byok_config.get("validator_path")
-    use_js_validator = _byok_config.get("use_js_validator", True)
-
-    # Use user-provided settings or fall back to server defaults
-    llm_temperature = (
-        temperature if temperature is not None else _byok_config.get("temperature", 0.1)
-    )
-
-    # Get model configuration: user override > server env var > default
-    # Annotation model: Claude Haiku 4.5 for best quality
+    # Apply defaults from environment
     default_annotation_model = os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
     default_annotation_provider = os.getenv("ANNOTATION_PROVIDER", "anthropic")
-    # Evaluation/Assessment: Qwen3-235B via Cerebras for consistent quality checks
-    default_evaluation_model = os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
-    default_evaluation_provider = os.getenv("EVALUATION_PROVIDER", "Cerebras")
+    default_eval_model = os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
+    default_eval_provider = os.getenv("EVALUATION_PROVIDER", "Cerebras")
 
-    # If user provides a model, use it for annotation only (eval stays consistent)
-    annotation_model = get_model_name(model if model else default_annotation_model)
-    evaluation_model = get_model_name(default_evaluation_model)
-    assessment_model = get_model_name(default_evaluation_model)
+    # Resolve final values: parameter > env var > default
+    actual_annotation_model = get_model_name(annotation_model or default_annotation_model)
+    actual_eval_model = get_model_name(eval_model or default_eval_model)
+    actual_temperature = temperature if temperature is not None else 0.1
+    actual_user_id = user_id or _derive_user_id(api_key)
 
-    # Provider logic for annotation model
-    if provider is not None:
-        annotation_provider = provider if provider else None
-    elif model is not None:
-        # User specified custom model but no provider → clear provider
-        annotation_provider = None
+    # Provider logic: if model specified without provider, clear provider
+    # (to avoid using wrong provider for custom models)
+    if annotation_provider is not None:
+        actual_annotation_provider = annotation_provider if annotation_provider else None
+    elif annotation_model is not None:
+        actual_annotation_provider = None  # Custom model, no default provider
     else:
-        annotation_provider = default_annotation_provider
+        actual_annotation_provider = default_annotation_provider
 
-    # Evaluation always uses its dedicated provider (Cerebras)
-    evaluation_provider = default_evaluation_provider
+    actual_eval_provider = eval_provider or default_eval_provider
 
-    # Use custom user_id if provided, otherwise derive from API key
-    # Custom user_id enables shared caching (e.g., all frontend users share cache)
-    user_id = user_id_override or _derive_user_id(openrouter_key)
-
-    # Create LLMs with user's key and settings
+    # Create LLMs
     annotation_llm = create_openrouter_llm(
-        model=annotation_model,
-        api_key=openrouter_key,
-        temperature=llm_temperature,
-        provider=annotation_provider,
-        user_id=user_id,
+        model=actual_annotation_model,
+        api_key=api_key,
+        temperature=actual_temperature,
+        provider=actual_annotation_provider,
+        user_id=actual_user_id,
     )
     evaluation_llm = create_openrouter_llm(
-        model=evaluation_model,
-        api_key=openrouter_key,
-        temperature=llm_temperature,
-        provider=evaluation_provider,
-        user_id=user_id,
+        model=actual_eval_model,
+        api_key=api_key,
+        temperature=actual_temperature,
+        provider=actual_eval_provider,
+        user_id=actual_user_id,
     )
     assessment_llm = create_openrouter_llm(
-        model=assessment_model,
-        api_key=openrouter_key,
-        temperature=llm_temperature,
-        provider=evaluation_provider,
-        user_id=user_id,
+        model=actual_eval_model,
+        api_key=api_key,
+        temperature=actual_temperature,
+        provider=actual_eval_provider,
+        user_id=actual_user_id,
+    )
+    feedback_llm = create_openrouter_llm(
+        model=actual_eval_model,
+        api_key=api_key,
+        temperature=actual_temperature,
+        provider=actual_eval_provider,
+        user_id=actual_user_id,
     )
 
     # Create and return workflow
+    # Only use JS validator if validator_path is available
+    actual_use_js = use_js_validator and validator_path is not None
     return HedAnnotationWorkflow(
         llm=annotation_llm,
         evaluation_llm=evaluation_llm,
         assessment_llm=assessment_llm,
-        schema_dir=schema_dir,
-        validator_path=validator_path,
-        use_js_validator=use_js_validator,
+        feedback_llm=feedback_llm,
+        schema_dir=Path(schema_dir) if schema_dir else None,
+        validator_path=Path(validator_path) if validator_path else None,
+        use_js_validator=actual_use_js,
+    )
+
+
+def create_byok_workflow(
+    openrouter_key: str,
+    model: str | None = None,
+    provider: str | None = None,
+    eval_model: str | None = None,
+    eval_provider: str | None = None,
+    temperature: float | None = None,
+    user_id_override: str | None = None,
+) -> HedAnnotationWorkflow:
+    """Create a workflow for BYOK mode using the user's OpenRouter key.
+
+    Thin wrapper around create_openrouter_workflow that uses cached server config
+    for schema/validator paths.
+
+    Args:
+        openrouter_key: User's OpenRouter API key
+        model: Override annotation model
+        provider: Override annotation provider
+        eval_model: Override evaluation model (for all eval/assessment/feedback)
+        eval_provider: Override evaluation provider
+        temperature: Override LLM temperature
+        user_id_override: Custom user ID for cache optimization
+
+    Returns:
+        Configured HedAnnotationWorkflow using the user's key
+    """
+    global _byok_config
+
+    return create_openrouter_workflow(
+        api_key=openrouter_key,
+        annotation_model=model,
+        annotation_provider=provider,
+        eval_model=eval_model,
+        eval_provider=eval_provider,
+        temperature=temperature if temperature is not None else _byok_config.get("temperature"),
+        user_id=user_id_override,
+        schema_dir=_byok_config.get("schema_dir"),
+        validator_path=_byok_config.get("validator_path"),
+        use_js_validator=_byok_config.get("use_js_validator", True),
     )
 
 
@@ -289,69 +336,29 @@ async def lifespan(app: FastAPI):
     print(f"Schema directory: {schema_dir or 'GitHub (dynamic fetch)'}")
     print(f"Validator path: {validator_path or 'None (using Python validator)'}")
 
-    # Initialize LLM based on provider
+    # Initialize workflow based on provider
     if llm_provider == "openrouter":
-        # OpenRouter configuration
+        # OpenRouter configuration - use unified workflow creation
         openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_api_key:
             raise ValueError(
                 "OPENROUTER_API_KEY environment variable is required when using OpenRouter"
             )
 
-        # Provider preference for optimal caching
-        # Default to "anthropic" for Claude models
-        provider_preference = os.getenv("LLM_PROVIDER_PREFERENCE", "anthropic")
-
-        # Per-agent model configuration
-        # Default annotation model: Claude Haiku 4.5 (best quality for diverse inputs)
-        annotation_model = get_model_name(
-            os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
-        )
-        evaluation_model = get_model_name(
-            os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
-        )
-        # Assessment and feedback use same model as annotation for consistency
-        assessment_model = get_model_name(
-            os.getenv("ASSESSMENT_MODEL", "anthropic/claude-haiku-4.5")
-        )
-        feedback_model = get_model_name(os.getenv("FEEDBACK_MODEL", "anthropic/claude-haiku-4.5"))
-
+        # Log configuration (env vars are read by create_openrouter_workflow)
         print("Using OpenRouter with models:")
-        print(f"  Annotation: {annotation_model}")
-        print(f"  Evaluation: {evaluation_model}")
-        print(f"  Assessment: {assessment_model}")
-        print(f"  Feedback: {feedback_model}")
-        if provider_preference:
-            print(f"  Provider: {provider_preference} (ultra-fast)")
+        print(f"  Annotation: {os.getenv('ANNOTATION_MODEL', 'anthropic/claude-haiku-4.5')}")
+        print(f"  Evaluation: {os.getenv('EVALUATION_MODEL', 'qwen/qwen3-235b-a22b-2507')}")
+        print(f"  Provider (annotation): {os.getenv('ANNOTATION_PROVIDER', 'anthropic')}")
+        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', 'Cerebras')}")
 
-        # Create LLMs for each agent
-        annotation_llm = create_openrouter_llm(
-            model=annotation_model,
+        workflow = create_openrouter_workflow(
             api_key=openrouter_api_key,
             temperature=llm_temperature,
-            provider=provider_preference,
+            schema_dir=schema_dir,
+            validator_path=validator_path if use_js_validator else None,
+            use_js_validator=use_js_validator,
         )
-        evaluation_llm = create_openrouter_llm(
-            model=evaluation_model,
-            api_key=openrouter_api_key,
-            temperature=llm_temperature,
-            provider=provider_preference,
-        )
-        assessment_llm = create_openrouter_llm(
-            model=assessment_model,
-            api_key=openrouter_api_key,
-            temperature=llm_temperature,
-            provider=provider_preference,
-        )
-        feedback_llm = create_openrouter_llm(
-            model=feedback_model,
-            api_key=openrouter_api_key,
-            temperature=llm_temperature,
-            provider=provider_preference,
-        )
-
-        # Use annotation_llm as default
-        llm = annotation_llm
     else:
         # Ollama configuration (default)
         llm_base_url = os.getenv("LLM_BASE_URL", "http://localhost:11435")
@@ -363,22 +370,15 @@ async def lifespan(app: FastAPI):
             temperature=llm_temperature,
         )
 
-        # All agents use same model for Ollama
-        annotation_llm = evaluation_llm = assessment_llm = feedback_llm = llm
-
         print(f"Using Ollama: {llm_model} at {llm_base_url}")
 
-    # Initialize workflow with per-agent LLMs
-    # schema_dir=None triggers HED library to fetch from GitHub dynamically
-    workflow = HedAnnotationWorkflow(
-        llm=annotation_llm,
-        evaluation_llm=evaluation_llm if llm_provider == "openrouter" else None,
-        assessment_llm=assessment_llm if llm_provider == "openrouter" else None,
-        feedback_llm=feedback_llm if llm_provider == "openrouter" else None,
-        schema_dir=Path(schema_dir) if schema_dir else None,
-        validator_path=Path(validator_path) if use_js_validator and validator_path else None,
-        use_js_validator=use_js_validator,
-    )
+        # Ollama uses same LLM for all agents
+        workflow = HedAnnotationWorkflow(
+            llm=llm,
+            schema_dir=Path(schema_dir) if schema_dir else None,
+            validator_path=Path(validator_path) if use_js_validator and validator_path else None,
+            use_js_validator=use_js_validator,
+        )
 
     # Set global schema_loader from workflow
     schema_loader = workflow.schema_loader
@@ -575,6 +575,8 @@ async def annotate(
         # Get model config: request body > headers > server defaults
         model = request.model or req.headers.get("x-openrouter-model")
         provider = request.provider or req.headers.get("x-openrouter-provider")
+        eval_model = req.headers.get("x-openrouter-eval-model")
+        eval_provider = req.headers.get("x-openrouter-eval-provider")
         temp_header = req.headers.get("x-openrouter-temperature")
         temperature = request.temperature
         if temperature is None and temp_header:
@@ -591,6 +593,8 @@ async def annotate(
                 openrouter_key,
                 model=model,
                 provider=provider,
+                eval_model=eval_model,
+                eval_provider=eval_provider,
                 temperature=temperature,
                 user_id_override=user_id_override,
             )
@@ -710,6 +714,8 @@ async def annotate_from_image(
         model = request.model or req.headers.get("x-openrouter-model")
         vision_model = request.vision_model or req.headers.get("x-openrouter-vision-model")
         provider = request.provider or req.headers.get("x-openrouter-provider")
+        eval_model = req.headers.get("x-openrouter-eval-model")
+        eval_provider = req.headers.get("x-openrouter-eval-provider")
         temp_header = req.headers.get("x-openrouter-temperature")
         temperature = request.temperature
         if temperature is None and temp_header:
@@ -726,6 +732,8 @@ async def annotate_from_image(
                 openrouter_key,
                 model=model,
                 provider=provider,
+                eval_model=eval_model,
+                eval_provider=eval_provider,
                 temperature=temperature,
                 user_id_override=user_id_override,
             )
