@@ -25,6 +25,7 @@ from src.cli.config import (
     load_config,
     load_credentials,
     mark_first_run_complete,
+    reset_config,
     save_config,
     save_credentials,
     update_config,
@@ -408,6 +409,13 @@ def annotate(
             help="Run completeness assessment",
         ),
     ] = False,
+    no_streaming: Annotated[
+        bool,
+        typer.Option(
+            "--no-streaming",
+            help="Disable streaming progress (use batch mode)",
+        ),
+    ] = False,
     standalone: StandaloneOption = False,
     api_mode: ApiModeOption = False,
     verbose: VerboseOption = False,
@@ -421,6 +429,7 @@ def annotate(
         hedit annotate "Audio beep plays" -o json > result.json
         hedit annotate "..." --model gpt-4o-mini --temperature 0.2
         hedit annotate "..." --standalone  # Run locally
+        hedit annotate "..." --no-streaming  # Disable live progress
     """
     # Show telemetry disclosure on first run
     if is_first_run():
@@ -454,24 +463,58 @@ def annotate(
         )
         raise typer.Exit(1)
 
-    # Show progress if not piped
     mode_name = mode_override or config.execution.mode
-    if not output.is_piped():
-        output.print_progress(f"Generating HED annotation ({mode_name} mode)")
+    # Determine if streaming should be used
+    # Streaming only works in API mode and when not piped
+    use_streaming = (
+        config.output.streaming
+        and not no_streaming
+        and mode_name == "api"
+        and not output.is_piped()
+    )
 
     try:
         executor = get_executor(config, effective_key, mode_override, config.settings.user_id)
-        result = executor.annotate(
-            description=description,
-            schema_version=schema_version or config.settings.schema_version,
-            max_validation_attempts=max_attempts,
-            run_assessment=assessment,
-        )
-        output.print_annotation_result(result, output_format, verbose)
 
-        # Exit with error code if annotation failed
-        if result.get("status") != "success" or not result.get("is_valid"):
-            raise typer.Exit(1)
+        if use_streaming and hasattr(executor, "annotate_stream"):
+            # Use streaming mode with live progress updates
+            result = None
+            with output.streaming_status("Connecting to API...") as status:
+                for event_type, data in executor.annotate_stream(
+                    description=description,
+                    schema_version=schema_version or config.settings.schema_version,
+                    max_validation_attempts=max_attempts,
+                    run_assessment=assessment,
+                ):
+                    output.update_streaming_status(status, event_type, data)
+                    if event_type == "result":
+                        result = data
+                    elif event_type == "error":
+                        output.print_error(data.get("message", "Unknown error"))
+                        raise typer.Exit(1)
+
+            if result:
+                output.print_annotation_result(result, output_format, verbose)
+                if result.get("status") != "success" or not result.get("is_valid"):
+                    raise typer.Exit(1)
+            else:
+                output.print_error("No result received from streaming API")
+                raise typer.Exit(1)
+        else:
+            # Use batch mode (non-streaming)
+            if not output.is_piped():
+                output.print_progress(f"Generating HED annotation ({mode_name} mode)")
+
+            result = executor.annotate(
+                description=description,
+                schema_version=schema_version or config.settings.schema_version,
+                max_validation_attempts=max_attempts,
+                run_assessment=assessment,
+            )
+            output.print_annotation_result(result, output_format, verbose)
+
+            if result.get("status") != "success" or not result.get("is_valid"):
+                raise typer.Exit(1)
 
     except ExecutionError as e:
         output.print_error(str(e), hint=e.detail)
@@ -751,6 +794,61 @@ def config_clear_credentials(
 
     clear_credentials()
     output.print_success("Credentials removed")
+
+
+@config_app.command("reset")
+def config_reset_cmd(
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            "-f",
+            help="Skip confirmation",
+        ),
+    ] = False,
+    clear_key: Annotated[
+        bool,
+        typer.Option(
+            "--clear-key",
+            help="Also remove stored API key (default: keep API key)",
+        ),
+    ] = False,
+) -> None:
+    """Reset configuration to defaults.
+
+    By default, this keeps your stored API key intact. Use --clear-key to also remove it.
+
+    Examples:
+        hedit config reset              # Reset to defaults, keep API key
+        hedit config reset --clear-key  # Reset everything including API key
+        hedit config reset -f           # Reset without confirmation
+    """
+    if not force:
+        if clear_key:
+            msg = "Reset all configuration AND remove stored API key?"
+        else:
+            msg = "Reset configuration to defaults? (API key will be preserved)"
+        confirm = typer.confirm(msg)
+        if not confirm:
+            raise typer.Abort()
+
+    # Reset config to defaults
+    new_config = reset_config()
+
+    # Optionally clear credentials
+    if clear_key:
+        clear_credentials()
+        output.print_success("Configuration reset to defaults (API key removed)")
+    else:
+        output.print_success("Configuration reset to defaults (API key preserved)")
+
+    # Show new defaults
+    output.print_info("\nNew default settings:")
+    output.print_info(f"  Model: {new_config.models.default}")
+    output.print_info(f"  Provider: {new_config.models.provider}")
+    output.print_info(f"  Temperature: {new_config.models.temperature}")
+    output.print_info(f"  Schema: {new_config.settings.schema_version}")
+    output.print_info(f"  Streaming: {new_config.output.streaming}")
 
 
 @app.command()

@@ -34,12 +34,12 @@ DEFAULT_API_URL = "https://api.annotation.garden/hedit"
 DEFAULT_DEV_API_URL = "https://api.annotation.garden/hedit-dev"
 
 # Default models and providers
-# Annotation model: Mistral-Small-3.2-24B chosen based on benchmark results:
-# - 100% faithful rate, 91% complete rate
-# - Fast (13s avg), low token usage
-# - Best cost efficiency ($0.18/M output)
-DEFAULT_MODEL = "mistralai/mistral-small-3.2-24b-instruct"
-DEFAULT_PROVIDER = "mistral"
+# Annotation model: Claude Haiku 4.5 (best quality for diverse inputs)
+# - Near-frontier intelligence at lower cost
+# - Excellent at reasoning and coding
+# - Uses "anthropic" provider for optimal caching
+DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
+DEFAULT_PROVIDER = "anthropic"
 
 # Evaluation model: Qwen3-235B for consistent quality assessment
 DEFAULT_EVAL_MODEL = "qwen/qwen3-235b-a22b-2507"
@@ -106,6 +106,7 @@ class OutputConfig(BaseModel):
     format: str = Field(default="text", description="Output format (text, json)")
     color: bool = Field(default=True, description="Enable colored output")
     verbose: bool = Field(default=False, description="Verbose output")
+    streaming: bool = Field(default=True, description="Enable streaming progress display")
 
 
 class APIConfig(BaseModel):
@@ -332,6 +333,24 @@ def clear_credentials() -> None:
     """Remove stored credentials."""
     if CREDENTIALS_FILE.exists():
         CREDENTIALS_FILE.unlink()
+
+
+def reset_config(preserve_credentials: bool = True) -> CLIConfig:
+    """Reset configuration to defaults.
+
+    Args:
+        preserve_credentials: If True, keep BYOK API key intact (default: True)
+
+    Returns:
+        The new default configuration
+    """
+    # Create fresh default config
+    config = CLIConfig()
+
+    # Save the default config
+    save_config(config)
+
+    return config
 
 
 def get_machine_id() -> str:

@@ -60,8 +60,8 @@ class TestCLIConfig:
         """Test default configuration values."""
         config = CLIConfig()
         assert config.api.url == "https://api.annotation.garden/hedit"
-        assert config.models.default == "mistralai/mistral-small-3.2-24b-instruct"
-        assert config.models.provider == "mistral"
+        assert config.models.default == "anthropic/claude-haiku-4.5"
+        assert config.models.provider == "anthropic"
         assert config.models.temperature == 0.1
         assert config.settings.schema_version == "8.4.0"
         assert config.output.format == "text"
@@ -378,3 +378,82 @@ class TestTelemetryConfig:
         config = TelemetryConfig(model_blacklist=["custom/model"])
 
         assert config.model_blacklist == ["custom/model"]
+
+
+class TestResetConfig:
+    """Tests for configuration reset functionality."""
+
+    def test_reset_config_restores_defaults(self, temp_config_dir):
+        """Test that reset_config restores default values."""
+        from src.cli.config import reset_config
+
+        # First, modify the config
+        config = CLIConfig()
+        config.models.default = "custom-model"
+        config.models.temperature = 0.9
+        config.output.streaming = False
+        save_config(config)
+
+        # Verify it was saved
+        loaded = load_config()
+        assert loaded.models.default == "custom-model"
+        assert loaded.output.streaming is False
+
+        # Reset to defaults
+        new_config = reset_config()
+
+        # Verify defaults are restored
+        assert new_config.models.default == "anthropic/claude-haiku-4.5"
+        assert new_config.models.temperature == 0.1
+        assert new_config.output.streaming is True
+
+        # Verify file was updated
+        reloaded = load_config()
+        assert reloaded.models.default == "anthropic/claude-haiku-4.5"
+
+    def test_reset_config_preserves_credentials(self, temp_config_dir):
+        """Test that reset_config does not affect credentials."""
+        from src.cli.config import reset_config
+
+        # Save credentials
+        creds = CredentialsConfig(openrouter_api_key="my-secret-key")
+        save_credentials(creds)
+
+        # Modify config
+        config = CLIConfig()
+        config.models.default = "custom-model"
+        save_config(config)
+
+        # Reset config
+        reset_config()
+
+        # Verify credentials are still there
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("OPENROUTER_API_KEY", None)
+            loaded_creds = load_credentials()
+            assert loaded_creds.openrouter_api_key == "my-secret-key"
+
+
+class TestStreamingConfig:
+    """Tests for streaming configuration."""
+
+    def test_default_streaming_enabled(self):
+        """Test that streaming is enabled by default."""
+        config = CLIConfig()
+        assert config.output.streaming is True
+
+    def test_streaming_can_be_disabled(self, temp_config_dir):
+        """Test that streaming can be disabled via config."""
+        config = CLIConfig()
+        config.output.streaming = False
+        save_config(config)
+
+        loaded = load_config()
+        assert loaded.output.streaming is False
+
+    def test_update_streaming_config(self, temp_config_dir):
+        """Test updating streaming config via update_config."""
+        update_config("output.streaming", "false")
+
+        config = load_config()
+        assert config.output.streaming is False

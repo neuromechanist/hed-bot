@@ -28,3 +28,21 @@ BACKEND_URL = "https://api.annotation.garden/hedit"
 # routes = [
 #   { pattern = "api.your-domain.com/*", zone_name = "your-domain.com" }
 # ]
+
+# =============================================================================
+# Development environment
+# Deploy with: npx wrangler deploy --env dev
+# Secrets: npx wrangler secret put BACKEND_API_KEY --env dev
+# =============================================================================
+[env.dev]
+name = "hedit-dev-api"
+vars = { ENVIRONMENT = "development", BACKEND_URL = "https://api.annotation.garden/hedit-dev" }
+
+# Dev-specific KV namespaces (separate from production)
+[[env.dev.kv_namespaces]]
+binding = "HED_CACHE"
+id = "4f9f591d9dc34806973efd069d29230b"
+
+[[env.dev.kv_namespaces]]
+binding = "RATE_LIMITER"
+id = "cceec1ae15754a7a946273b97eb488a3"
