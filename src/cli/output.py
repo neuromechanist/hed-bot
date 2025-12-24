@@ -5,10 +5,12 @@ Uses Rich for beautiful terminal output with colors, tables, and panels.
 
 import json
 import sys
+from contextlib import contextmanager
 from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.status import Status
 from rich.table import Table
 from rich.text import Text
 
@@ -282,6 +284,50 @@ def print_info(message: str) -> None:
 def print_progress(message: str) -> None:
     """Print a progress message to stderr (doesn't interfere with piped output)."""
     err_console.print(f"[dim]{message}...[/]")
+
+
+@contextmanager
+def streaming_status(initial_message: str = "Connecting..."):
+    """Context manager for streaming status updates.
+
+    Yields a Status object that can be updated with new messages.
+    The status spinner updates in place (single line).
+
+    Example:
+        with streaming_status("Starting...") as status:
+            for event_type, data in stream:
+                update_streaming_status(status, event_type, data)
+    """
+    with err_console.status(f"[dim]{initial_message}[/]", spinner="dots") as status:
+        yield status
+
+
+def update_streaming_status(status: Status, event_type: str, data: dict[str, Any]) -> None:
+    """Update streaming status with event data.
+
+    Args:
+        status: Rich Status object from streaming_status()
+        event_type: SSE event type (progress, validation, etc.)
+        data: Event data dictionary
+    """
+    if event_type == "progress":
+        message = data.get("message", "Processing...")
+        attempt = data.get("attempt")
+
+        if attempt:
+            status.update(f"[dim]{message} (attempt {attempt})[/]")
+        else:
+            status.update(f"[dim]{message}[/]")
+
+    elif event_type == "validation":
+        valid = data.get("valid", False)
+        attempt = data.get("attempt", 1)
+        message = data.get("message", "")
+
+        if valid:
+            status.update("[green]Validation passed[/]")
+        else:
+            status.update(f"[yellow]Attempt {attempt}: {message}[/]")
 
 
 def is_piped() -> bool:

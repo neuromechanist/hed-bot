@@ -6,6 +6,7 @@ This is the default, lightweight execution mode.
 Dependencies: httpx (always available)
 """
 
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -91,6 +92,32 @@ class APIExecutionBackend(ExecutionBackend):
         """Generate HED annotation via API."""
         try:
             return self._client.annotate(
+                description=description,
+                schema_version=schema_version,
+                max_validation_attempts=max_validation_attempts,
+                run_assessment=run_assessment,
+            )
+        except APIError as e:
+            raise ExecutionError(
+                str(e),
+                code=str(e.status_code) if e.status_code else None,
+                detail=e.detail,
+            ) from e
+
+    def annotate_stream(
+        self,
+        description: str,
+        schema_version: str = "8.4.0",
+        max_validation_attempts: int = 5,
+        run_assessment: bool = False,
+        **kwargs: Any,
+    ) -> Generator[tuple[str, dict[str, Any]], None, None]:
+        """Generate HED annotation with streaming progress via API.
+
+        Yields SSE events as (event_type, data) tuples.
+        """
+        try:
+            yield from self._client.annotate_stream(
                 description=description,
                 schema_version=schema_version,
                 max_validation_attempts=max_validation_attempts,

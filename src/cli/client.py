@@ -4,6 +4,8 @@ Handles all API communication with proper error handling and timeout management.
 """
 
 import base64
+import json
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -176,6 +178,58 @@ class HEDitClient:
                 },
             )
             return self._handle_response(response)
+
+    def annotate_stream(
+        self,
+        description: str,
+        schema_version: str = "8.3.0",
+        max_validation_attempts: int = 5,
+        run_assessment: bool = False,
+    ) -> Generator[tuple[str, dict[str, Any]], None, None]:
+        """Generate HED annotation with streaming progress.
+
+        Yields SSE events as (event_type, data) tuples.
+
+        Args:
+            description: Natural language event description
+            schema_version: HED schema version
+            max_validation_attempts: Maximum validation retries
+            run_assessment: Whether to run assessment
+
+        Yields:
+            Tuple of (event_type, event_data) for each SSE event.
+            Event types: "progress", "validation", "result", "error", "done"
+        """
+        with httpx.Client(timeout=self.timeout) as client:
+            with client.stream(
+                "POST",
+                f"{self.api_url}/annotate/stream",
+                headers=self._get_headers(),
+                json={
+                    "description": description,
+                    "schema_version": schema_version,
+                    "max_validation_attempts": max_validation_attempts,
+                    "run_assessment": run_assessment,
+                },
+            ) as response:
+                if response.status_code != 200:
+                    # Read full response for error
+                    response.read()
+                    self._handle_response(response)
+                    return
+
+                # Parse SSE stream
+                current_event = None
+                for line in response.iter_lines():
+                    if line.startswith("event: "):
+                        current_event = line[7:]
+                    elif line.startswith("data: ") and current_event:
+                        try:
+                            data = json.loads(line[6:])
+                            yield (current_event, data)
+                        except json.JSONDecodeError:
+                            pass  # Skip malformed data
+                        current_event = None
 
     def annotate_image(
         self,

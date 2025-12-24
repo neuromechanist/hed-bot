@@ -106,6 +106,7 @@ class OutputConfig(BaseModel):
     format: str = Field(default="text", description="Output format (text, json)")
     color: bool = Field(default=True, description="Enable colored output")
     verbose: bool = Field(default=False, description="Verbose output")
+    streaming: bool = Field(default=True, description="Enable streaming progress display")
 
 
 class APIConfig(BaseModel):
@@ -332,6 +333,24 @@ def clear_credentials() -> None:
     """Remove stored credentials."""
     if CREDENTIALS_FILE.exists():
         CREDENTIALS_FILE.unlink()
+
+
+def reset_config(preserve_credentials: bool = True) -> CLIConfig:
+    """Reset configuration to defaults.
+
+    Args:
+        preserve_credentials: If True, keep BYOK API key intact (default: True)
+
+    Returns:
+        The new default configuration
+    """
+    # Create fresh default config
+    config = CLIConfig()
+
+    # Save the default config
+    save_config(config)
+
+    return config
 
 
 def get_machine_id() -> str:
