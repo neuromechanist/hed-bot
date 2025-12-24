@@ -1064,6 +1064,14 @@ Example: A red circle appears on the left side of the screen and the participant
                 </select>
             </div>
             <div>
+                <label for="annotationModel">Annotation Model</label>
+                <select id="annotationModel">
+                    <option value="anthropic/claude-haiku-4.5" data-provider="anthropic" selected>Claude Haiku 4.5 (best)</option>
+                    <option value="mistralai/mistral-small-3.2-24b-instruct" data-provider="mistral">Mistral Small 3.2 (balanced, cheap)</option>
+                    <option value="openai/gpt-oss-120b" data-provider="Cerebras">GPT-OSS 120B (fast, cheap)</option>
+                </select>
+            </div>
+            <div>
                 <label for="maxAttempts">Max Validation Attempts</label>
                 <input type="number" id="maxAttempts" value="3" min="1" max="10">
             </div>
@@ -1631,6 +1639,11 @@ Example: A red circle appears on the left side of the screen and the participant
                 // Get Turnstile token for bot protection
                 const turnstileToken = await getTurnstileToken();
 
+                // Get selected model and provider
+                const modelSelect = document.getElementById('annotationModel');
+                const selectedModel = modelSelect.value;
+                const selectedProvider = modelSelect.options[modelSelect.selectedIndex].dataset.provider;
+
                 const payload = {
                     description: description,
                     schema_version: schema,
@@ -1649,6 +1662,8 @@ Example: A red circle appears on the left side of the screen and the participant
                     headers: {
                         'Content-Type': 'application/json',
                         'X-User-Id': `frontend-${FRONTEND_VERSION}`,
+                        'X-OpenRouter-Model': selectedModel,
+                        'X-OpenRouter-Provider': selectedProvider,
                     },
                     body: JSON.stringify(payload)
                 });
