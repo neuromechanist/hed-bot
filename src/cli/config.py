@@ -34,12 +34,12 @@ DEFAULT_API_URL = "https://api.annotation.garden/hedit"
 DEFAULT_DEV_API_URL = "https://api.annotation.garden/hedit-dev"
 
 # Default models and providers
-# Annotation model: Mistral-Small-3.2-24B chosen based on benchmark results:
-# - 100% faithful rate, 91% complete rate
-# - Fast (13s avg), low token usage
-# - Best cost efficiency ($0.18/M output)
-DEFAULT_MODEL = "mistralai/mistral-small-3.2-24b-instruct"
-DEFAULT_PROVIDER = "mistral"
+# Annotation model: Claude Haiku 4.5 (best quality for diverse inputs)
+# - Near-frontier intelligence at lower cost
+# - Excellent at reasoning and coding
+# - Uses "anthropic" provider for optimal caching
+DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
+DEFAULT_PROVIDER = "anthropic"
 
 # Evaluation model: Qwen3-235B for consistent quality assessment
 DEFAULT_EVAL_MODEL = "qwen/qwen3-235b-a22b-2507"

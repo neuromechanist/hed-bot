@@ -105,11 +105,9 @@ def create_byok_workflow(
     )
 
     # Get model configuration: user override > server env var > default
-    # Annotation model: Mistral-Small for best quality/cost balance
-    default_annotation_model = os.getenv(
-        "ANNOTATION_MODEL", "mistralai/mistral-small-3.2-24b-instruct"
-    )
-    default_annotation_provider = os.getenv("ANNOTATION_PROVIDER", "mistral")
+    # Annotation model: Claude Haiku 4.5 for best quality
+    default_annotation_model = os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
+    default_annotation_provider = os.getenv("ANNOTATION_PROVIDER", "anthropic")
     # Evaluation/Assessment: Qwen3-235B via Cerebras for consistent quality checks
     default_evaluation_model = os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
     default_evaluation_provider = os.getenv("EVALUATION_PROVIDER", "Cerebras")
@@ -300,25 +298,23 @@ async def lifespan(app: FastAPI):
                 "OPENROUTER_API_KEY environment variable is required when using OpenRouter"
             )
 
-        # Provider preference (e.g., "mistral" for Mistral models, "Cerebras" for fast inference)
-        # Default to "mistral" for best routing with Mistral models
-        provider_preference = os.getenv("LLM_PROVIDER_PREFERENCE", "mistral")
+        # Provider preference for optimal caching
+        # Default to "anthropic" for Claude models
+        provider_preference = os.getenv("LLM_PROVIDER_PREFERENCE", "anthropic")
 
         # Per-agent model configuration
-        # Default annotation model: Mistral-Small-3.2-24B (best balance of quality/speed/cost)
+        # Default annotation model: Claude Haiku 4.5 (best quality for diverse inputs)
         annotation_model = get_model_name(
-            os.getenv("ANNOTATION_MODEL", "mistralai/mistral-small-3.2-24b-instruct")
+            os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
         )
         evaluation_model = get_model_name(
             os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
         )
         # Assessment and feedback use same model as annotation for consistency
         assessment_model = get_model_name(
-            os.getenv("ASSESSMENT_MODEL", "mistralai/mistral-small-3.2-24b-instruct")
+            os.getenv("ASSESSMENT_MODEL", "anthropic/claude-haiku-4.5")
         )
-        feedback_model = get_model_name(
-            os.getenv("FEEDBACK_MODEL", "mistralai/mistral-small-3.2-24b-instruct")
-        )
+        feedback_model = get_model_name(os.getenv("FEEDBACK_MODEL", "anthropic/claude-haiku-4.5"))
 
         print("Using OpenRouter with models:")
         print(f"  Annotation: {annotation_model}")
