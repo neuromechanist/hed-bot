@@ -108,7 +108,7 @@ class HEDitClient:
             APIError: If request failed
         """
         if response.status_code == 200:
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
 
         # Parse error detail
         try:

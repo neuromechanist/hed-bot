@@ -37,14 +37,14 @@ class ValidationAgent:
         self.use_javascript = use_javascript
         self.error_remediator = get_remediator(tests_json_path)
 
+        # Declare validators with proper types
+        self.js_validator: HedJavaScriptValidator | None = None
+        self.py_validator: HedPythonValidator | None = None
+
         if use_javascript:
             if validator_path is None:
                 raise ValueError("validator_path required when use_javascript=True")
             self.js_validator = HedJavaScriptValidator(validator_path)
-            self.py_validator = None
-        else:
-            self.js_validator = None
-            self.py_validator = None  # Created per-schema
 
     async def validate(self, state: HedAnnotationState) -> dict:
         """Validate the current HED annotation.

@@ -78,7 +78,9 @@ Return ONLY a JSON array of lowercase keywords."""
 
         try:
             response = await self.llm.ainvoke(messages)
-            keywords = self._parse_keywords(response.content)
+            content = response.content
+            raw_content = content if isinstance(content, str) else str(content)
+            keywords = self._parse_keywords(raw_content)
             logger.debug(f"Extracted keywords: {keywords}")
             return keywords
         except Exception as e:

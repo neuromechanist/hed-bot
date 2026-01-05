@@ -156,7 +156,7 @@ class HedAnnotationWorkflow:
         # After assessment, always end
         workflow.add_edge("assess", END)
 
-        return workflow.compile()
+        return workflow.compile()  # type: ignore[return-value]
 
     async def _semantic_preprocess_node(self, state: HedAnnotationState) -> dict:
         """Semantic preprocessing node: Extract keywords and find relevant tags.
@@ -381,6 +381,7 @@ class HedAnnotationWorkflow:
         max_validation_attempts: int = 5,
         max_total_iterations: int = 10,
         run_assessment: bool = False,
+        no_extend: bool = False,
         config: dict | None = None,
     ) -> HedAnnotationState:
         """Run the complete annotation workflow.
@@ -391,6 +392,7 @@ class HedAnnotationWorkflow:
             max_validation_attempts: Maximum validation retry attempts
             max_total_iterations: Maximum total iterations to prevent infinite loops
             run_assessment: Whether to run final assessment (default: False)
+            no_extend: If True, prohibit tag extensions (use only existing vocabulary)
             config: Optional LangGraph config (e.g., recursion_limit)
 
         Returns:
@@ -405,9 +407,10 @@ class HedAnnotationWorkflow:
             max_validation_attempts,
             max_total_iterations,
             run_assessment,
+            no_extend=no_extend,
         )
 
         # Run workflow
-        final_state = await self.graph.ainvoke(initial_state, config=config)
+        final_state = await self.graph.ainvoke(initial_state, config=config)  # type: ignore[attr-defined]
 
-        return final_state
+        return final_state  # type: ignore[no-any-return]

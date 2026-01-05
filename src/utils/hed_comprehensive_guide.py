@@ -66,6 +66,7 @@ def get_comprehensive_hed_guide(
     vocabulary_sample: list[str],
     extendable_tags: list[str],
     semantic_hints: list[dict] | None = None,
+    no_extend: bool = False,
 ) -> str:
     """Generate comprehensive HED annotation guide.
 
@@ -74,22 +75,47 @@ def get_comprehensive_hed_guide(
         extendable_tags: Tags that allow extension
         semantic_hints: Optional list of semantically relevant tags from search
                        Each dict has: tag, score, source, prefix (optional)
+        no_extend: If True, add strict instructions to prohibit tag extensions
 
     Returns:
         Complete HED annotation guide
     """
     # Provide FULL vocabulary (not just first 100)
     vocab_str = ", ".join(vocabulary_sample)
-    extend_str = ", ".join(extendable_tags)
+    extend_str = ", ".join(extendable_tags) if not no_extend else "(Extensions disabled)"
 
     # Format semantic hints section if provided
     hints_section = ""
     if semantic_hints:
         hints_section = _format_semantic_hints(semantic_hints)
 
+    # Add no-extend warning if enabled
+    no_extend_warning = ""
+    if no_extend:
+        no_extend_warning = """
+## ⚠️ EXTENSIONS DISABLED - USE ONLY EXISTING TAGS
+
+**CRITICAL**: Tag extensions are PROHIBITED in this annotation.
+You must ONLY use tags that exist in the vocabulary below.
+
+- DO NOT use slash (/) to create new tags
+- DO NOT extend any parent tag with new concepts
+- If a concept is not in the vocabulary, use the closest existing tag
+- Use grouping to add context instead of extensions
+
+WRONG: Animal/Marmoset (extension not allowed)
+RIGHT: (Animal-agent, Animal) or just Animal (if in vocabulary)
+
+If the vocabulary lacks a precise tag, use the most semantically similar existing tag
+and add a Label/Description for clarification if needed.
+
+---
+
+"""
+
     return f"""# HED ANNOTATION GUIDE
 
-## CRITICAL RULE: CHECK VOCABULARY FIRST
+{no_extend_warning}## CRITICAL RULE: CHECK VOCABULARY FIRST
 
 BEFORE using ANY tag with a slash (/), CHECK if it's in the vocabulary below!
 

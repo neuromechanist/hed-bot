@@ -835,7 +835,7 @@ class SemanticSearchManager:
             Embedding vector as numpy array
         """
         model = self._get_model()
-        return model.encode(text.lower(), normalize_embeddings=True)
+        return model.encode(text.lower(), normalize_embeddings=True)  # type: ignore[return-value]
 
     def embed_batch(self, texts: list[str]) -> np.ndarray:
         """Generate embeddings for multiple texts.

@@ -71,6 +71,9 @@ class HedAnnotationState(TypedDict):
     extracted_keywords: list[str]  # Keywords extracted from input description
     semantic_hints: list[dict]  # Relevant tags from semantic search [{tag, score, source}]
 
+    # Extension control
+    no_extend: bool  # If True, prohibit tag extensions (use only existing vocabulary)
+
 
 def create_initial_state(
     input_description: str,
@@ -80,6 +83,7 @@ def create_initial_state(
     run_assessment: bool = False,
     extracted_keywords: list[str] | None = None,
     semantic_hints: list[dict] | None = None,
+    no_extend: bool = False,
 ) -> HedAnnotationState:
     """Create an initial state for a new annotation workflow.
 
@@ -91,6 +95,7 @@ def create_initial_state(
         run_assessment: Whether to run final assessment (default: False)
         extracted_keywords: Pre-extracted keywords from description (optional)
         semantic_hints: Pre-computed semantic search hints (optional)
+        no_extend: If True, prohibit tag extensions (default: False)
 
     Returns:
         Initial HedAnnotationState
@@ -117,4 +122,5 @@ def create_initial_state(
         run_assessment=run_assessment,
         extracted_keywords=extracted_keywords or [],
         semantic_hints=semantic_hints or [],
+        no_extend=no_extend,
     )
