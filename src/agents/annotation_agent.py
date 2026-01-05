@@ -56,17 +56,19 @@ class AnnotationAgent:
         self,
         vocabulary: list[str],
         extendable_tags: list[str],
+        semantic_hints: list[dict] | None = None,
     ) -> str:
         """Build the system prompt for the annotation agent.
 
         Args:
             vocabulary: List of valid short-form HED tags
             extendable_tags: Tags that allow extension
+            semantic_hints: Optional semantic search results with relevant tags
 
         Returns:
             Complete system prompt with all HED rules
         """
-        return get_comprehensive_hed_guide(vocabulary, extendable_tags)
+        return get_comprehensive_hed_guide(vocabulary, extendable_tags, semantic_hints)
 
     def _build_user_prompt(
         self,
@@ -142,8 +144,11 @@ Just output the HED string directly."""
             # Use empty list - LLM will still generate valid annotations
             extendable_tags = []
 
-        # Build prompts with complete HED rules
-        system_prompt = self._build_system_prompt(vocabulary, extendable_tags)
+        # Build prompts with complete HED rules (including semantic hints if available)
+        semantic_hints = state.get("semantic_hints", [])
+        system_prompt = self._build_system_prompt(
+            vocabulary, extendable_tags, semantic_hints if semantic_hints else None
+        )
 
         # Build user prompt with any feedback (use augmented errors with remediation for LLM)
         feedbacks = []
