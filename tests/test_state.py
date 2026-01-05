@@ -16,7 +16,7 @@ def test_create_initial_state():
     assert state["is_faithful"] is False
     assert state["is_complete"] is False
     assert state["max_validation_attempts"] == 5
-    assert state["schema_version"] == "8.3.0"
+    assert state["schema_version"] == "8.4.0"
 
 
 def test_create_initial_state_custom_params():
@@ -24,9 +24,9 @@ def test_create_initial_state_custom_params():
     description = "Test event"
     state = create_initial_state(
         description,
-        schema_version="8.4.0",
+        schema_version="8.3.0",
         max_validation_attempts=3,
     )
 
-    assert state["schema_version"] == "8.4.0"
+    assert state["schema_version"] == "8.3.0"
     assert state["max_validation_attempts"] == 3
