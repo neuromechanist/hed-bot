@@ -230,7 +230,7 @@ class ValidationAgent:
                 if tag.extension:
                     extended_tags.append(str(tag))
         except Exception:
-            # If parsing fails, fall back to validator warnings
+            # If parsing fails, return empty list (extensions will not be stripped)
             pass
 
         return extended_tags
