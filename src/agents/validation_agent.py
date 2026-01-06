@@ -209,6 +209,9 @@ class ValidationAgent:
         This is more reliable than validator warnings which may be suppressed
         when there are other errors (like TAG_INVALID).
 
+        Falls back to regex-based detection if HedString parsing fails
+        (e.g., due to unbalanced parentheses).
+
         Args:
             annotation: HED annotation string
             schema_version: Schema version to check against
@@ -229,8 +232,56 @@ class ValidationAgent:
                 # Check if this tag has an extension
                 if tag.extension:
                     extended_tags.append(str(tag))
+
+            # If HedString returned no tags but annotation has slashes,
+            # parsing may have silently failed (e.g., unbalanced parens)
+            if not extended_tags and "/" in annotation:
+                extended_tags = self._detect_extensions_via_regex(annotation, schema)
+
         except Exception:
-            # If parsing fails, return empty list (extensions will not be stripped)
-            pass
+            # If parsing fails, try regex-based detection as fallback
+            try:
+                schema = load_schema_version(schema_version)
+                extended_tags = self._detect_extensions_via_regex(annotation, schema)
+            except Exception:
+                pass
+
+        return extended_tags
+
+    def _detect_extensions_via_regex(self, annotation: str, schema: object) -> list[str]:
+        """Detect extended tags using regex when HedString parsing fails.
+
+        Finds patterns like "Parent/Extension" and checks if Parent is a valid
+        base tag that can be extended.
+
+        Args:
+            annotation: HED annotation string
+            schema: Loaded HED schema object
+
+        Returns:
+            List of extended tag strings
+        """
+        extended_tags = []
+
+        # Find all potential extended tags (word/word patterns)
+        # Match: word characters, then /, then word characters
+        pattern = r"\b([A-Z][a-zA-Z-]*(?:/[A-Za-z][a-zA-Z-]*)+)"
+        matches = re.findall(pattern, annotation)
+
+        for match in matches:
+            # Split into base and extension parts
+            parts = match.split("/")
+            base_tag = parts[0]
+
+            # Check if base_tag is a valid HED tag that allows extensions
+            # Get all tags from schema and check if base_tag is extendable
+            try:
+                tag_entry = schema.get_tag_entry(base_tag)  # type: ignore[attr-defined]
+                if tag_entry and tag_entry.has_attribute("extensionAllowed"):
+                    extended_tags.append(match)
+            except Exception:
+                # If we can't check, assume it might be an extension
+                # to be safe, include it
+                pass
 
         return extended_tags
