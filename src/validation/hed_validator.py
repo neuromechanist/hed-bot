@@ -157,7 +157,9 @@ class HedPythonValidator:
             # Process issues
             for issue in issues:
                 issue_str = get_printable_issue_string([issue])
-                severity = "error" if issue["severity"] == "error" else "warning"
+                severity: Literal["error", "warning"] = (
+                    "error" if issue["severity"] == "error" else "warning"
+                )
 
                 validation_issue = ValidationIssue(
                     code=issue.get("code", "UNKNOWN"),

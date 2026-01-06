@@ -220,7 +220,7 @@ class LocalExecutionBackend(ExecutionBackend):
 
         return self._vision_agent
 
-    def _run_async(self, coro):
+    def _run_async(self, coro: Any) -> Any:
         """Run async coroutine synchronously."""
         try:
             loop = asyncio.get_running_loop()
@@ -242,6 +242,7 @@ class LocalExecutionBackend(ExecutionBackend):
         schema_version: str = "8.4.0",
         max_validation_attempts: int = 5,
         run_assessment: bool = False,
+        no_extend: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Generate HED annotation locally."""
@@ -249,12 +250,13 @@ class LocalExecutionBackend(ExecutionBackend):
 
         workflow = self._get_workflow()
 
-        async def _run():
+        async def _run() -> Any:
             return await workflow.run(
                 input_description=description,
                 schema_version=schema_version,
                 max_validation_attempts=max_validation_attempts,
                 run_assessment=run_assessment,
+                no_extend=no_extend,
             )
 
         try:
@@ -291,6 +293,7 @@ class LocalExecutionBackend(ExecutionBackend):
         schema_version: str = "8.4.0",
         max_validation_attempts: int = 5,
         run_assessment: bool = False,
+        no_extend: bool = False,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Generate HED annotation from image locally."""
@@ -321,7 +324,7 @@ class LocalExecutionBackend(ExecutionBackend):
         vision_agent = self._get_vision_agent()
         workflow = self._get_workflow()
 
-        async def _run():
+        async def _run() -> tuple[str, dict[str, Any], Any]:
             # Step 1: Generate image description
             vision_result = await vision_agent.describe_image(
                 image_data=image_uri,
@@ -335,6 +338,7 @@ class LocalExecutionBackend(ExecutionBackend):
                 schema_version=schema_version,
                 max_validation_attempts=max_validation_attempts,
                 run_assessment=run_assessment,
+                no_extend=no_extend,
             )
 
             return description, vision_result, final_state

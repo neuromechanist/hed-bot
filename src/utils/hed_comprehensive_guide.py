@@ -6,23 +6,142 @@ HedAnnotationSemantics.md for proper semantic annotation rules.
 """
 
 
-def get_comprehensive_hed_guide(vocabulary_sample: list[str], extendable_tags: list[str]) -> str:
+def _format_semantic_hints(hints: list[dict]) -> str:
+    """Format semantic hints for inclusion in the guide.
+
+    Args:
+        hints: List of semantic search results, each with:
+              - tag: HED tag name
+              - score: Relevance score (0-1)
+              - source: "keyword", "embedding", or "both"
+              - prefix: Optional library prefix (e.g., "sc:")
+
+    Returns:
+        Formatted hints section for the guide
+    """
+    if not hints:
+        return ""
+
+    # Categorize by confidence level
+    high_conf = []  # score >= 0.8
+    medium_conf = []  # 0.5 <= score < 0.8
+    low_conf = []  # score < 0.5
+
+    for hint in hints:
+        tag = hint.get("tag", "")
+        prefix = hint.get("prefix", "")
+        score = hint.get("score", 0)
+        full_tag = f"{prefix}{tag}" if prefix else tag
+
+        if score >= 0.8:
+            high_conf.append(full_tag)
+        elif score >= 0.5:
+            medium_conf.append(full_tag)
+        else:
+            low_conf.append(full_tag)
+
+    lines = [
+        "## POTENTIALLY RELEVANT TAGS",
+        "",
+        "Based on your description, these schema tags may be relevant.",
+        "Note: this list may contain false positives - use your judgment.",
+        "",
+    ]
+
+    if high_conf:
+        lines.append(f"**High confidence**: {', '.join(high_conf)}")
+    if medium_conf:
+        lines.append(f"**Medium confidence**: {', '.join(medium_conf)}")
+    if low_conf:
+        lines.append(f"**Lower confidence**: {', '.join(low_conf)}")
+
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def get_comprehensive_hed_guide(
+    vocabulary_sample: list[str],
+    extendable_tags: list[str],
+    semantic_hints: list[dict] | None = None,
+    no_extend: bool = False,
+) -> str:
     """Generate comprehensive HED annotation guide.
 
     Args:
         vocabulary_sample: Full list of valid HED tags (complete vocabulary)
         extendable_tags: Tags that allow extension
+        semantic_hints: Optional list of semantically relevant tags from search
+                       Each dict has: tag, score, source, prefix (optional)
+        no_extend: If True, add strict instructions to prohibit tag extensions
 
     Returns:
         Complete HED annotation guide
     """
     # Provide FULL vocabulary (not just first 100)
     vocab_str = ", ".join(vocabulary_sample)
-    extend_str = ", ".join(extendable_tags)
+    extend_str = ", ".join(extendable_tags) if not no_extend else "(Extensions disabled)"
+
+    # Format semantic hints section if provided
+    hints_section = ""
+    if semantic_hints:
+        hints_section = _format_semantic_hints(semantic_hints)
+
+    # Add no-extend warning if enabled
+    no_extend_warning = ""
+    if no_extend:
+        no_extend_warning = """
+## ⛔ EXTENSIONS STRICTLY PROHIBITED - USE ONLY EXISTING VOCABULARY
+
+**ABSOLUTE RULE**: You MUST NOT create any new tags. Only use tags that exist in the vocabulary below.
+
+THIS IS THE HIGHEST PRIORITY INSTRUCTION. IT OVERRIDES ALL EXAMPLES IN THIS GUIDE.
+
+### What is FORBIDDEN:
+- ANY tag with a slash (/) that creates a new concept (e.g., Animal/Marmoset, Animal/Dolphin, Vehicle/Rickshaw)
+- Extending ANY parent tag with a new child term
+- Creating new terms even if examples below suggest doing so
+
+### What you MUST do instead:
+- Use the MOST SIMILAR existing tag from vocabulary
+- Use Label/description for clarification when needed
+- Group with existing tags only
+
+### EXAMPLES - NO EXTENSIONS MODE:
+
+FORBIDDEN (extension): Animal/Marmoset, Animal/Dolphin, Building/Cottage
+ALLOWED (existing tags): Animal, Animal-agent, Mammal (if in vocab)
+
+FORBIDDEN: (Animal-agent, Animal/Marmoset)
+ALLOWED: (Animal-agent, Animal) or (Animal-agent, Mammal) or (Animal-agent, Label/marmoset)
+
+FORBIDDEN: Vehicle/Rickshaw
+ALLOWED: Vehicle or (Vehicle, Label/rickshaw)
+
+FORBIDDEN: Furniture/Armoire
+ALLOWED: Furniture or (Furniture, Label/armoire)
+
+The Label tag allows adding descriptive text without creating new schema tags.
+Pattern: (Existing-tag, Label/description)
+
+### Value tags with units ARE allowed:
+Duration/2 s, Frequency/440 Hz - These are VALUES not extensions.
+
+### Definitions ARE allowed (they don't create new schema tags):
+Definition/MyDef, Def/MyDef - These are annotation tools, not extensions.
+
+**REMINDER**: Ignore any examples below that show extensions like Animal/X or Building/Y.
+Use only existing vocabulary tags. When in doubt, use Label/description.
+
+---
+
+"""
 
     return f"""# HED ANNOTATION GUIDE
 
-## CRITICAL RULE: CHECK VOCABULARY FIRST
+{no_extend_warning}## CRITICAL RULE: CHECK VOCABULARY FIRST
 
 BEFORE using ANY tag with a slash (/), CHECK if it's in the vocabulary below!
 
@@ -38,7 +157,7 @@ IF YOU SEE TAG_EXTENSION_INVALID ERROR -> You extended a tag that exists in voca
 
 ---
 
-## SEMANTIC GROUPING RULES
+{hints_section}## SEMANTIC GROUPING RULES
 
 A well-formed HED annotation can be translated back into coherent English.
 This reversibility principle is the fundamental validation test for HED semantics.

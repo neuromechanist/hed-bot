@@ -16,7 +16,8 @@ def test_create_initial_state():
     assert state["is_faithful"] is False
     assert state["is_complete"] is False
     assert state["max_validation_attempts"] == 5
-    assert state["schema_version"] == "8.3.0"
+    assert state["schema_version"] == "8.4.0"
+    assert state["no_extend"] is False
 
 
 def test_create_initial_state_custom_params():
@@ -24,9 +25,38 @@ def test_create_initial_state_custom_params():
     description = "Test event"
     state = create_initial_state(
         description,
-        schema_version="8.4.0",
+        schema_version="8.3.0",
         max_validation_attempts=3,
     )
 
-    assert state["schema_version"] == "8.4.0"
+    assert state["schema_version"] == "8.3.0"
     assert state["max_validation_attempts"] == 3
+
+
+def test_create_initial_state_no_extend():
+    """Test creating initial state with no_extend=True."""
+    description = "A reward is delivered to the animal"
+    state = create_initial_state(
+        description,
+        no_extend=True,
+    )
+
+    assert state["no_extend"] is True
+    assert state["input_description"] == description
+    assert state["schema_version"] == "8.4.0"
+
+
+def test_create_initial_state_semantic_hints():
+    """Test creating initial state with semantic hints."""
+    description = "A visual stimulus appears"
+    semantic_hints = [
+        {"tag": "Visual-presentation", "score": 0.9, "source": "keyword"},
+    ]
+    state = create_initial_state(
+        description,
+        semantic_hints=semantic_hints,
+    )
+
+    assert state["semantic_hints"] == semantic_hints
+    assert len(state["semantic_hints"]) == 1
+    assert state["semantic_hints"][0]["tag"] == "Visual-presentation"

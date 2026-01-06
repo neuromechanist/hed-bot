@@ -160,6 +160,15 @@ def create_openrouter_workflow(
         user_id=actual_user_id,
     )
 
+    # Keyword extraction uses fast model (same as eval for speed)
+    keyword_llm = create_openrouter_llm(
+        model=actual_eval_model,
+        api_key=api_key,
+        temperature=0.0,  # Deterministic for keyword extraction
+        provider=actual_eval_provider,
+        user_id=actual_user_id,
+    )
+
     # Create and return workflow
     # Only use JS validator if validator_path is available
     actual_use_js = use_js_validator and validator_path is not None
@@ -168,6 +177,7 @@ def create_openrouter_workflow(
         evaluation_llm=evaluation_llm,
         assessment_llm=assessment_llm,
         feedback_llm=feedback_llm,
+        keyword_llm=keyword_llm,
         schema_dir=Path(schema_dir) if schema_dir else None,
         validator_path=Path(validator_path) if validator_path else None,
         use_js_validator=actual_use_js,

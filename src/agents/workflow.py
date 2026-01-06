@@ -4,6 +4,7 @@ This module defines the multi-agent workflow that orchestrates
 annotation, validation, evaluation, and assessment.
 """
 
+import logging
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
@@ -13,9 +14,13 @@ from src.agents.annotation_agent import AnnotationAgent
 from src.agents.assessment_agent import AssessmentAgent
 from src.agents.evaluation_agent import EvaluationAgent
 from src.agents.feedback_summarizer import FeedbackSummarizer
+from src.agents.keyword_extraction_agent import KeywordExtractionAgent
 from src.agents.state import HedAnnotationState
 from src.agents.validation_agent import ValidationAgent
 from src.utils.schema_loader import HedSchemaLoader
+from src.utils.semantic_search import SemanticSearchManager, get_semantic_search_manager
+
+logger = logging.getLogger(__name__)
 
 
 class HedAnnotationWorkflow:
@@ -39,9 +44,12 @@ class HedAnnotationWorkflow:
         evaluation_llm: BaseChatModel | None = None,
         assessment_llm: BaseChatModel | None = None,
         feedback_llm: BaseChatModel | None = None,
+        keyword_llm: BaseChatModel | None = None,
         schema_dir: Path | str | None = None,
         validator_path: Path | None = None,
         use_js_validator: bool = True,
+        enable_semantic_search: bool = True,
+        embeddings_path: Path | None = None,
     ) -> None:
         """Initialize the workflow.
 
@@ -50,12 +58,16 @@ class HedAnnotationWorkflow:
             evaluation_llm: Language model for evaluation agent (defaults to llm)
             assessment_llm: Language model for assessment agent (defaults to llm)
             feedback_llm: Language model for feedback summarization (defaults to llm)
+            keyword_llm: Language model for keyword extraction (fast model, defaults to llm)
             schema_dir: Directory containing JSON schemas
             validator_path: Path to hed-javascript for validation
             use_js_validator: Whether to use JavaScript validator
+            enable_semantic_search: Whether to enable semantic search preprocessing
+            embeddings_path: Path to pre-computed embeddings file
         """
         # Store schema directory (None means use HED library to fetch from GitHub)
         self.schema_dir = schema_dir
+        self.enable_semantic_search = enable_semantic_search
 
         # Initialize legacy schema loader for validation
         self.schema_loader = HedSchemaLoader()
@@ -64,6 +76,7 @@ class HedAnnotationWorkflow:
         eval_llm = evaluation_llm or llm
         assess_llm = assessment_llm or llm
         feed_llm = feedback_llm or llm
+        kw_llm = keyword_llm or llm
 
         # Initialize agents with JSON schema support and per-agent LLMs
         self.annotation_agent = AnnotationAgent(llm, schema_dir=self.schema_dir)
@@ -75,6 +88,14 @@ class HedAnnotationWorkflow:
         self.evaluation_agent = EvaluationAgent(eval_llm, schema_dir=self.schema_dir)
         self.assessment_agent = AssessmentAgent(assess_llm, schema_dir=self.schema_dir)
         self.feedback_summarizer = FeedbackSummarizer(feed_llm)
+
+        # Initialize semantic search components
+        self.keyword_extraction_agent = KeywordExtractionAgent(kw_llm)
+        self.semantic_search: SemanticSearchManager | None = None
+        if enable_semantic_search:
+            self.semantic_search = get_semantic_search_manager()
+            if embeddings_path:
+                self.semantic_search.load_embeddings(embeddings_path)
 
         # Build graph
         self.graph = self._build_graph()
@@ -89,6 +110,8 @@ class HedAnnotationWorkflow:
         workflow = StateGraph(HedAnnotationState)
 
         # Add nodes
+        if self.enable_semantic_search:
+            workflow.add_node("semantic_preprocess", self._semantic_preprocess_node)
         workflow.add_node("annotate", self._annotate_node)
         workflow.add_node("validate", self._validate_node)
         workflow.add_node("summarize_feedback", self._summarize_feedback_node)
@@ -96,7 +119,11 @@ class HedAnnotationWorkflow:
         workflow.add_node("assess", self._assess_node)
 
         # Add edges
-        workflow.set_entry_point("annotate")
+        if self.enable_semantic_search:
+            workflow.set_entry_point("semantic_preprocess")
+            workflow.add_edge("semantic_preprocess", "annotate")
+        else:
+            workflow.set_entry_point("annotate")
 
         # After annotation, always validate
         workflow.add_edge("annotate", "validate")
@@ -129,7 +156,52 @@ class HedAnnotationWorkflow:
         # After assessment, always end
         workflow.add_edge("assess", END)
 
-        return workflow.compile()
+        return workflow.compile()  # type: ignore[return-value]
+
+    async def _semantic_preprocess_node(self, state: HedAnnotationState) -> dict:
+        """Semantic preprocessing node: Extract keywords and find relevant tags.
+
+        This node runs before annotation to provide semantic hints based on
+        the input description. Only runs on the first iteration.
+
+        Args:
+            state: Current workflow state
+
+        Returns:
+            State update with extracted_keywords and semantic_hints
+        """
+        # Only run preprocessing on first iteration
+        if state.get("total_iterations", 0) > 0:
+            logger.debug("[WORKFLOW] Skipping semantic preprocessing (not first iteration)")
+            return {}
+
+        logger.info("[WORKFLOW] Entering semantic_preprocess node")
+
+        # Extract keywords from description
+        keywords = await self.keyword_extraction_agent.extract(state["input_description"])
+        logger.info(f"[WORKFLOW] Extracted keywords: {keywords}")
+
+        # Find relevant tags using semantic search
+        semantic_hints = []
+        if self.semantic_search and keywords:
+            matches = self.semantic_search.find_similar(
+                keywords, top_k=15, use_embeddings=self.semantic_search.is_available()
+            )
+            semantic_hints = [
+                {
+                    "tag": m.tag,
+                    "prefix": m.prefix,
+                    "score": m.score,
+                    "source": m.source,
+                }
+                for m in matches
+            ]
+            logger.info(f"[WORKFLOW] Found {len(semantic_hints)} relevant tags")
+
+        return {
+            "extracted_keywords": keywords,
+            "semantic_hints": semantic_hints,
+        }
 
     async def _annotate_node(self, state: HedAnnotationState) -> dict:
         """Annotation node: Generate or refine HED annotation.
@@ -309,6 +381,7 @@ class HedAnnotationWorkflow:
         max_validation_attempts: int = 5,
         max_total_iterations: int = 10,
         run_assessment: bool = False,
+        no_extend: bool = False,
         config: dict | None = None,
     ) -> HedAnnotationState:
         """Run the complete annotation workflow.
@@ -319,6 +392,7 @@ class HedAnnotationWorkflow:
             max_validation_attempts: Maximum validation retry attempts
             max_total_iterations: Maximum total iterations to prevent infinite loops
             run_assessment: Whether to run final assessment (default: False)
+            no_extend: If True, prohibit tag extensions (use only existing vocabulary)
             config: Optional LangGraph config (e.g., recursion_limit)
 
         Returns:
@@ -333,9 +407,10 @@ class HedAnnotationWorkflow:
             max_validation_attempts,
             max_total_iterations,
             run_assessment,
+            no_extend=no_extend,
         )
 
         # Run workflow
-        final_state = await self.graph.ainvoke(initial_state, config=config)
+        final_state = await self.graph.ainvoke(initial_state, config=config)  # type: ignore[attr-defined]
 
-        return final_state
+        return final_state  # type: ignore[no-any-return]
