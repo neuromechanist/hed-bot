@@ -181,6 +181,28 @@ class TestHedLspClient:
             assert len(result.suggestions) == 1
             assert result.suggestions[0].tag == "Event/Sensory-event"
 
+    def test_suggest_query_keyed_format(self):
+        """Should parse query-keyed output format from hed-suggest CLI."""
+        # This is the actual format returned by hed-suggest --json
+        mock_output = '{"button press": ["Button", "Response-button", "Mouse-button"]}'
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = mock_output
+        mock_result.stderr = ""
+
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=mock_result),
+        ):
+            client = HedLspClient()
+            result = client.suggest("button press")
+
+            assert result.success is True
+            assert len(result.suggestions) == 3
+            assert result.suggestions[0].tag == "Button"
+            assert result.suggestions[1].tag == "Response-button"
+            assert result.suggestions[2].tag == "Mouse-button"
+
     def test_suggest_handles_timeout(self):
         """Should handle subprocess timeout."""
         with (
