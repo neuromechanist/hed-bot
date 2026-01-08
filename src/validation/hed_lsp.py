@@ -179,22 +179,25 @@ class HedLspClient:
                     if isinstance(item, str):
                         suggestions.append(HedSuggestion(tag=item))
                     elif isinstance(item, dict):
+                        tag = item.get("tag") or item.get("name") or ""
                         suggestions.append(
                             HedSuggestion(
-                                tag=item.get("tag", item.get("name", "")),
+                                tag=tag,
                                 score=item.get("score"),
                                 description=item.get("description"),
                             )
                         )
             elif isinstance(output, dict):
                 # Object with suggestions array
-                for item in output.get("suggestions", output.get("results", [])):
+                items = output.get("suggestions") or output.get("results") or []
+                for item in items:
                     if isinstance(item, str):
                         suggestions.append(HedSuggestion(tag=item))
                     elif isinstance(item, dict):
+                        tag = item.get("tag") or item.get("name") or ""
                         suggestions.append(
                             HedSuggestion(
-                                tag=item.get("tag", item.get("name", "")),
+                                tag=tag,
                                 score=item.get("score"),
                                 description=item.get("description"),
                             )

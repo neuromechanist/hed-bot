@@ -50,7 +50,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Lazy import for hed_validator components that require hedtools."""
     if name in (
         "HedPythonValidator",
