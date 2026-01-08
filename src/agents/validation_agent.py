@@ -5,6 +5,7 @@ and provides detailed feedback for corrections. When invalid tags are found,
 it uses hed-lsp CLI to suggest valid alternatives.
 """
 
+import logging
 import re
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from src.validation.hed_validator import (
     HedPythonValidator,
     ValidationResult,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def strip_extensions(annotation: str, extended_tags: list[str]) -> str:
@@ -146,8 +149,12 @@ class ValidationAgent:
                 schema_version=schema_version,
                 max_results=5,  # Limit suggestions for clarity
             )
-        except Exception:
-            # Silently fail if hed-lsp has issues
+        except Exception as e:
+            logger.warning(
+                "Failed to get tag suggestions from hed-lsp for tags %s: %s",
+                problematic_tags,
+                e,
+            )
             return {}
 
     def _format_suggestions_for_feedback(
@@ -342,13 +349,14 @@ class ValidationAgent:
             if not extended_tags and "/" in annotation:
                 extended_tags = self._detect_extensions_via_regex(annotation, schema)
 
-        except Exception:
+        except Exception as e:
             # If parsing fails, try regex-based detection as fallback
+            logger.debug("HedString parsing failed, falling back to regex: %s", e)
             try:
                 schema = load_schema_version(schema_version)
                 extended_tags = self._detect_extensions_via_regex(annotation, schema)
-            except Exception:
-                pass
+            except Exception as e2:
+                logger.debug("Regex fallback also failed: %s", e2)
 
         return extended_tags
 
@@ -383,9 +391,8 @@ class ValidationAgent:
                 tag_entry = schema.get_tag_entry(base_tag)  # type: ignore[attr-defined]
                 if tag_entry and tag_entry.has_attribute("extensionAllowed"):
                     extended_tags.append(match)
-            except Exception:
-                # If we can't check, assume it might be an extension
-                # to be safe, include it
-                pass
+            except Exception as e:
+                # If we can't check the schema, log it but continue
+                logger.debug("Could not check if '%s' allows extensions: %s", base_tag, e)
 
         return extended_tags

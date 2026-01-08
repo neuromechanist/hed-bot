@@ -12,11 +12,14 @@ Installation: https://github.com/hed-standard/hed-lsp
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import subprocess
 from dataclasses import dataclass
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 
 def is_hed_lsp_available() -> bool:
@@ -32,9 +35,9 @@ def get_default_schema_version() -> str:
     """Get default HED schema version from environment.
 
     Returns:
-        Schema version string (default: "8.3.0")
+        Schema version string (default: "8.4.0")
     """
-    return os.environ.get("HED_SCHEMA_VERSION", "8.3.0")
+    return os.environ.get("HED_SCHEMA_VERSION", "8.4.0")
 
 
 def get_default_use_semantic() -> bool:
@@ -52,9 +55,11 @@ def get_default_max_results() -> int:
     Returns:
         Maximum number of results to return (default: 10)
     """
+    value = os.environ.get("HED_LSP_MAX_RESULTS", "10")
     try:
-        return int(os.environ.get("HED_LSP_MAX_RESULTS", "10"))
+        return int(value)
     except ValueError:
+        logger.warning(f"Invalid HED_LSP_MAX_RESULTS value '{value}', using default of 10")
         return 10
 
 
@@ -145,7 +150,14 @@ class HedLspClient:
             )
 
         # Build command
-        cmd = ["hed-suggest", "--json", "--schema", self.schema_version, "--top", str(self.max_results)]
+        cmd = [
+            "hed-suggest",
+            "--json",
+            "--schema",
+            self.schema_version,
+            "--top",
+            str(self.max_results),
+        ]
 
         if self.use_semantic:
             cmd.append("--semantic")
@@ -329,11 +341,17 @@ def suggest_tags_for_keywords(
     )
 
     results = {}
+    failed_keywords = []
     for keyword in keywords:
         result = client.suggest(keyword)
         if result.success:
             results[keyword] = [s.tag for s in result.suggestions]
         else:
+            logger.warning(f"hed-lsp suggestion failed for keyword '{keyword}': {result.error}")
             results[keyword] = []
+            failed_keywords.append(keyword)
+
+    if failed_keywords:
+        logger.warning(f"Failed to get suggestions for {len(failed_keywords)} keywords")
 
     return results

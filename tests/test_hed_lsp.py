@@ -9,11 +9,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Import directly from the module to avoid cascade imports of hed_validator
-# which requires hedtools package
-import sys
-sys.path.insert(0, "/home/user/HEDit")
-
 from src.validation.hed_lsp import (
     HedLspClient,
     HedSuggestion,
@@ -47,7 +42,7 @@ class TestEnvironmentDefaults:
     def test_default_schema_version(self):
         """Should return default schema version."""
         with patch.dict("os.environ", {}, clear=True):
-            assert get_default_schema_version() == "8.3.0"
+            assert get_default_schema_version() == "8.4.0"
 
     def test_schema_version_from_env(self):
         """Should return schema version from environment."""
