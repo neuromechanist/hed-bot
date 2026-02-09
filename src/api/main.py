@@ -1014,6 +1014,9 @@ async def annotate_stream(
         def send_event(event_type: str, data: dict) -> str:
             return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
+        # SSE padding comment to force Safari to open the stream
+        yield ": stream opened\n\n"
+
         try:
             # Send initial start event
             yield send_event(
@@ -1118,6 +1121,7 @@ async def annotate_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Content-Type-Options": "nosniff",  # Prevent Safari content-type sniffing
         },
     )
 
@@ -1248,6 +1252,9 @@ async def annotate_from_image_stream(
 
         def send_event(event_type: str, data: dict) -> str:
             return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+        # SSE padding comment to force Safari to open the stream
+        yield ": stream opened\n\n"
 
         try:
             # Send initial start event
@@ -1383,6 +1390,7 @@ async def annotate_from_image_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Content-Type-Options": "nosniff",  # Prevent Safari content-type sniffing
         },
     )
 
