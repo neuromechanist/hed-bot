@@ -257,3 +257,62 @@ class TestValidationAgentNoExtend:
         assert result["is_valid"] is True
         # Should have no TAG_EXTENDED warnings after stripping
         assert not any("TAG_EXTENDED" in w for w in result["validation_warnings"])
+
+
+class TestValidationAgentTagSuggestions:
+    """Tests for tag_suggestions field in validate() return dict."""
+
+    @pytest.fixture
+    def validation_agent(self):
+        """Create a validation agent using Python validator (no LSP)."""
+        loader = HedSchemaLoader()
+        return ValidationAgent(loader, use_javascript=False, use_hed_lsp=False)
+
+    @pytest.mark.asyncio
+    async def test_tag_suggestions_present_when_valid(self, validation_agent):
+        """tag_suggestions key should be present even when annotation is valid."""
+        state = {
+            "current_annotation": "Sensory-event, Red, Circle",
+            "schema_version": "8.4.0",
+            "validation_attempts": 0,
+            "max_validation_attempts": 3,
+            "no_extend": False,
+        }
+
+        result = await validation_agent.validate(state)
+
+        assert "tag_suggestions" in result
+        assert result["tag_suggestions"] == {}
+
+    @pytest.mark.asyncio
+    async def test_tag_suggestions_present_when_invalid(self, validation_agent):
+        """tag_suggestions key should be present when annotation is invalid."""
+        state = {
+            "current_annotation": "InvalidTag123, Sensory-event",
+            "schema_version": "8.4.0",
+            "validation_attempts": 0,
+            "max_validation_attempts": 3,
+            "no_extend": False,
+        }
+
+        result = await validation_agent.validate(state)
+
+        assert "tag_suggestions" in result
+        # Without LSP, suggestions should be empty
+        assert result["tag_suggestions"] == {}
+
+    @pytest.mark.asyncio
+    async def test_tag_suggestions_empty_when_lsp_disabled(self, validation_agent):
+        """tag_suggestions should be empty dict when LSP is disabled."""
+        state = {
+            "current_annotation": "Sensory-event, Red, Circle",
+            "schema_version": "8.4.0",
+            "validation_attempts": 0,
+            "max_validation_attempts": 3,
+            "no_extend": False,
+        }
+
+        result = await validation_agent.validate(state)
+
+        # Without LSP, tag_suggestions is always empty regardless of validity
+        assert result["tag_suggestions"] == {}
