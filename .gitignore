@@ -34,13 +34,13 @@ ENV/
 *~
 
 # Claude specific
-CLAUDE.md
-.rules/
-.context/
-plan.md
-ideas.md
-scratch_notes.md
-research.md
+# CLAUDE.md
+# .rules/
+# .context/
+# plan.md
+# ideas.md
+# scratch_notes.md
+# research.md
 
 # Environment variables
 .env
