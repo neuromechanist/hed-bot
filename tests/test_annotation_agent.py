@@ -42,10 +42,12 @@ class TestFormatTagSuggestions:
     def test_mixed_tags(self):
         """Should handle mix of tags with and without suggestions."""
         agent = self._make_agent()
-        result = agent._format_tag_suggestions({
-            "Grass": ["Green", "Item-natural-feature"],
-            "FakeTag": [],
-        })
+        result = agent._format_tag_suggestions(
+            {
+                "Grass": ["Green", "Item-natural-feature"],
+                "FakeTag": [],
+            }
+        )
 
         assert "Grass" in result
         assert "Green" in result
@@ -55,9 +57,11 @@ class TestFormatTagSuggestions:
     def test_truncates_to_three_suggestions(self):
         """Should show at most 3 suggestions per tag."""
         agent = self._make_agent()
-        result = agent._format_tag_suggestions({
-            "test": ["Tag1", "Tag2", "Tag3", "Tag4", "Tag5"],
-        })
+        result = agent._format_tag_suggestions(
+            {
+                "test": ["Tag1", "Tag2", "Tag3", "Tag4", "Tag5"],
+            }
+        )
 
         assert "Tag1" in result
         assert "Tag2" in result
