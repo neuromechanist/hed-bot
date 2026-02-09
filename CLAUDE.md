@@ -66,6 +66,7 @@ hedit/                  # (currently hed-bot, renaming in v0.6.0)
 - **Tag rules**:
   - Tags should ONLY be pushed after the PR is merged
   - Never push tags from feature branches
+- **Skip auto-release**: Add `[skip-release]` to commit message to prevent CI version bumps on main (use for docs-only, context, or config changes)
 - Prerelease labels:
   - `dev`: Feature branches being merged to develop (goes to TestPyPI)
   - `alpha`: develop branch merged to main (goes to PyPI as pre-release)
