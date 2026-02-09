@@ -215,17 +215,11 @@ class ValidationAgent:
         )
 
         # Extract problematic tags and get suggestions from hed-lsp
+        tag_suggestions: dict[str, list[str]] = {}
         if not result.is_valid and self.use_hed_lsp:
             problematic_tags = self._extract_problematic_tags(result.errors, result.warnings)
             if problematic_tags:
-                suggestions = self._get_tag_suggestions(problematic_tags, schema_version)
-                suggestion_feedback = self._format_suggestions_for_feedback(suggestions)
-                if suggestion_feedback:
-                    # Append suggestions to augmented errors for LLM feedback
-                    if augmented_errors:
-                        augmented_errors[-1] += suggestion_feedback
-                    else:
-                        augmented_errors = [suggestion_feedback]
+                tag_suggestions = self._get_tag_suggestions(problematic_tags, schema_version)
 
         # Determine validation status
         validation_attempts = state["validation_attempts"] + 1
@@ -251,6 +245,7 @@ class ValidationAgent:
             "validation_warnings_augmented": augmented_warnings,  # For LLM feedback
             "validation_attempts": validation_attempts,
             "is_valid": is_valid,
+            "tag_suggestions": tag_suggestions,  # LSP suggestions as first-class field
         }
 
         # If we stripped extensions, update the annotation in the result
