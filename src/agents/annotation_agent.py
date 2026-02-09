@@ -113,6 +113,11 @@ class AnnotationAgent:
         if validation_errors:
             errors_str = "\n".join(f"- {error}" for error in validation_errors)
             suggestions_str = self._format_tag_suggestions(tag_suggestions or {})
+            replacement_note = (
+                "IMPORTANT: Replace invalid tags with the suggested alternatives above.\n"
+                if suggestions_str
+                else ""
+            )
             return f"""Previous annotation had validation errors:
 {errors_str}
 {suggestions_str}
@@ -121,8 +126,7 @@ Please fix these errors and generate a corrected HED annotation for:
 {description}
 
 Remember to use only valid HED tags and follow proper grouping rules.
-{f"IMPORTANT: Replace invalid tags with the suggested alternatives above." if suggestions_str else ""}
-
+{replacement_note}
 CRITICAL: Output ONLY the raw HED annotation string.
 Do NOT include:
 - Markdown headers (##, ###)
@@ -197,8 +201,8 @@ Just output the HED string directly."""
 
         user_prompt = self._build_user_prompt(
             state["input_description"],
-            feedbacks if feedbacks else None,
-            tag_suggestions if tag_suggestions else None,
+            feedbacks or None,
+            tag_suggestions or None,
         )
 
         # Generate annotation

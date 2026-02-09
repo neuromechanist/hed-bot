@@ -1121,7 +1121,7 @@ async def annotate_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-            "X-Content-Type-Options": "nosniff",  # Prevent Safari content-type sniffing
+            "X-Content-Type-Options": "nosniff",  # Prevent MIME-type sniffing; helps Safari trust text/event-stream
         },
     )
 
@@ -1390,7 +1390,7 @@ async def annotate_from_image_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-            "X-Content-Type-Options": "nosniff",  # Prevent Safari content-type sniffing
+            "X-Content-Type-Options": "nosniff",  # Prevent MIME-type sniffing; helps Safari trust text/event-stream
         },
     )
 

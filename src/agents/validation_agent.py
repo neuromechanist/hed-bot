@@ -155,28 +155,6 @@ class ValidationAgent:
             )
             return {}
 
-    def _format_suggestions_for_feedback(self, suggestions: dict[str, list[str]]) -> str:
-        """Format tag suggestions as feedback for the LLM.
-
-        Args:
-            suggestions: Dictionary mapping problematic tags to suggested alternatives
-
-        Returns:
-            Formatted suggestion string for LLM feedback
-        """
-        if not suggestions:
-            return ""
-
-        lines = ["\n--- Suggested valid HED tags for problematic terms ---"]
-        for tag, suggested in suggestions.items():
-            if suggested:
-                lines.append(f"  '{tag}' → consider: {', '.join(suggested[:3])}")
-            else:
-                lines.append(f"  '{tag}' → no direct match found, check HED schema vocabulary")
-        lines.append("---")
-
-        return "\n".join(lines)
-
     async def validate(self, state: HedAnnotationState) -> dict:
         """Validate the current HED annotation.
 
