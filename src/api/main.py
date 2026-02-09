@@ -1075,15 +1075,16 @@ async def annotate_stream(
                                     },
                                 )
                             elif errors:
-                                yield send_event(
-                                    "validation",
-                                    {
-                                        "valid": False,
-                                        "attempt": validation_attempt,
-                                        "errors": errors[:3],  # Send first 3 errors
-                                        "message": f"Found {len(errors)} validation error(s)",
-                                    },
-                                )
+                                tag_suggestions = output.get("tag_suggestions", {})
+                                validation_data = {
+                                    "valid": False,
+                                    "attempt": validation_attempt,
+                                    "errors": errors[:3],  # Send first 3 errors
+                                    "message": f"Found {len(errors)} validation error(s)",
+                                }
+                                if tag_suggestions:
+                                    validation_data["tag_suggestions"] = tag_suggestions
+                                yield send_event("validation", validation_data)
 
             # Send final result
             is_valid = (
@@ -1099,6 +1100,7 @@ async def annotate_stream(
                 "validation_attempts": current_state.get("validation_attempts", 0),
                 "validation_errors": current_state.get("validation_errors", []),
                 "validation_warnings": current_state.get("validation_warnings", []),
+                "tag_suggestions": current_state.get("tag_suggestions", {}),
                 "evaluation_feedback": current_state.get("evaluation_feedback", ""),
                 "assessment_feedback": current_state.get("assessment_feedback", ""),
                 "status": status,
@@ -1342,15 +1344,16 @@ async def annotate_from_image_stream(
                                     },
                                 )
                             elif errors:
-                                yield send_event(
-                                    "validation",
-                                    {
-                                        "valid": False,
-                                        "attempt": validation_attempt,
-                                        "errors": errors[:3],  # Send first 3 errors
-                                        "message": f"Found {len(errors)} validation error(s)",
-                                    },
-                                )
+                                tag_suggestions = output.get("tag_suggestions", {})
+                                validation_data = {
+                                    "valid": False,
+                                    "attempt": validation_attempt,
+                                    "errors": errors[:3],  # Send first 3 errors
+                                    "message": f"Found {len(errors)} validation error(s)",
+                                }
+                                if tag_suggestions:
+                                    validation_data["tag_suggestions"] = tag_suggestions
+                                yield send_event("validation", validation_data)
 
             # Send final result
             is_valid = (
@@ -1367,6 +1370,7 @@ async def annotate_from_image_stream(
                 "validation_attempts": current_state.get("validation_attempts", 0),
                 "validation_errors": current_state.get("validation_errors", []),
                 "validation_warnings": current_state.get("validation_warnings", []),
+                "tag_suggestions": current_state.get("tag_suggestions", {}),
                 "evaluation_feedback": current_state.get("evaluation_feedback", ""),
                 "assessment_feedback": current_state.get("assessment_feedback", ""),
                 "status": status,

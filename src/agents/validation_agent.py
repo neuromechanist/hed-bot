@@ -147,7 +147,7 @@ class ValidationAgent:
                 schema_version=schema_version,
                 max_results=5,  # Limit suggestions for clarity
             )
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.warning(
                 "Failed to get tag suggestions from hed-lsp for tags %s: %s",
                 problematic_tags,
