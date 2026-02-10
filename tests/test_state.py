@@ -18,6 +18,7 @@ def test_create_initial_state():
     assert state["max_validation_attempts"] == 5
     assert state["schema_version"] == "8.4.0"
     assert state["no_extend"] is False
+    assert state["tag_suggestions"] == {}
 
 
 def test_create_initial_state_custom_params():

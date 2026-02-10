@@ -72,30 +72,61 @@ class AnnotationAgent:
         """
         return get_comprehensive_hed_guide(vocabulary, extendable_tags, semantic_hints, no_extend)
 
+    def _format_tag_suggestions(self, tag_suggestions: dict[str, list[str]]) -> str:
+        """Format tag suggestions into a clear instruction block.
+
+        Args:
+            tag_suggestions: Mapping of invalid tags to suggested valid alternatives
+
+        Returns:
+            Formatted suggestion string
+        """
+        if not tag_suggestions:
+            return ""
+
+        lines = ["\nSuggested VALID HED tag replacements for invalid tags:"]
+        for invalid_tag, suggestions in tag_suggestions.items():
+            if suggestions:
+                lines.append(f"  Instead of '{invalid_tag}', use: {', '.join(suggestions[:3])}")
+            else:
+                lines.append(
+                    f"  '{invalid_tag}' has no direct match; check the HED schema vocabulary"
+                )
+        return "\n".join(lines)
+
     def _build_user_prompt(
         self,
         description: str,
         validation_errors: list[str] | None = None,
+        tag_suggestions: dict[str, list[str]] | None = None,
     ) -> str:
         """Build the user prompt for annotation.
 
         Args:
             description: Natural language event description
             validation_errors: Previous validation errors (if retrying)
+            tag_suggestions: LSP-suggested valid tags for invalid tags
 
         Returns:
             User prompt string
         """
         if validation_errors:
             errors_str = "\n".join(f"- {error}" for error in validation_errors)
+            suggestions_str = self._format_tag_suggestions(tag_suggestions or {})
+            replacement_note = (
+                "IMPORTANT: Replace invalid tags with the suggested alternatives above.\n"
+                if suggestions_str
+                else ""
+            )
             return f"""Previous annotation had validation errors:
 {errors_str}
+{suggestions_str}
 
 Please fix these errors and generate a corrected HED annotation for:
 {description}
 
 Remember to use only valid HED tags and follow proper grouping rules.
-
+{replacement_note}
 CRITICAL: Output ONLY the raw HED annotation string.
 Do NOT include:
 - Markdown headers (##, ###)
@@ -165,9 +196,13 @@ Just output the HED string directly."""
         if state.get("assessment_feedback") and not state.get("is_complete"):
             feedbacks.append(f"Assessment feedback: {state['assessment_feedback']}")
 
+        # Pass tag suggestions directly (survives feedback summarization)
+        tag_suggestions = state.get("tag_suggestions", {})
+
         user_prompt = self._build_user_prompt(
             state["input_description"],
-            feedbacks if feedbacks else None,
+            feedbacks or None,
+            tag_suggestions or None,
         )
 
         # Generate annotation

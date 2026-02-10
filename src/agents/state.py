@@ -71,6 +71,9 @@ class HedAnnotationState(TypedDict):
     extracted_keywords: list[str]  # Keywords extracted from input description
     semantic_hints: list[dict]  # Relevant tags from semantic search [{tag, score, source}]
 
+    # LSP tag suggestions for invalid tags (survives feedback summarization)
+    tag_suggestions: dict[str, list[str]]  # {invalid_tag: [suggested_valid_tags]}
+
     # Extension control
     no_extend: bool  # If True, prohibit tag extensions (use only existing vocabulary)
 
@@ -122,5 +125,6 @@ def create_initial_state(
         run_assessment=run_assessment,
         extracted_keywords=extracted_keywords or [],
         semantic_hints=semantic_hints or [],
+        tag_suggestions={},
         no_extend=no_extend,
     )
