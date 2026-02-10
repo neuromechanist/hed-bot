@@ -112,14 +112,16 @@ jobs:
             echo "No integration-related files changed - tests will be skipped"
           fi
 
-  # Standalone tests can run on PRs to test feature branch functionality
+  # Standalone tests verify LLM behavior hasn't regressed across PRs.
+  # Only runs on PRs targeting main when LangGraph components are touched,
+  # to avoid unnecessary API costs on feature branch PRs.
   standalone-tests:
-    name: Standalone Tests (Feature Branch)
+    name: Standalone Tests (PR to main)
     runs-on: ubuntu-latest
     needs: [check-changes]
-    # Run standalone tests on PRs when semantic search or agent files change
     if: |
       github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main' &&
       needs.check-changes.outputs.integration_needed == 'true'
 
     steps:
