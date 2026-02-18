@@ -218,48 +218,22 @@ def test_validation_result_structure(validator):
     assert isinstance(result.warnings, list)
 
 
-class TestGetValidatorBackend:
-    """Tests for get_validator backend parameter."""
+class TestGetValidator:
+    """Tests for get_validator factory function."""
 
-    def test_python_backend(self):
-        """backend='python' should return HedPythonValidator."""
-        validator = get_validator(backend="python")
+    def test_python_fallback(self):
+        """get_validator with prefer_js=False should return HedPythonValidator."""
+        validator = get_validator(prefer_js=False)
         assert isinstance(validator, HedPythonValidator)
 
-    def test_hedtools_backend_returns_api_validator(self):
-        """backend='hedtools' should return HedToolsAPIValidator when reachable."""
-        from src.validation.hedtools_validator import (
-            HedToolsAPIValidator,
-            is_hedtools_available,
-        )
-
-        if not is_hedtools_available():
-            pytest.skip("hedtools.org not reachable")
-        validator = get_validator(backend="hedtools")
-        assert isinstance(validator, HedToolsAPIValidator)
-
-    def test_hedtools_backend_unreachable_raises(self):
-        """backend='hedtools' should raise when hedtools.org is unreachable."""
-        from src.validation.hedtools_validator import is_hedtools_available
-
-        if is_hedtools_available():
-            pytest.skip("hedtools.org is reachable; cannot test unreachable path")
-        with pytest.raises(RuntimeError, match="not reachable"):
-            get_validator(backend="hedtools")
-
-    def test_invalid_backend_raises_value_error(self):
-        """Unknown backend should raise ValueError."""
-        with pytest.raises(ValueError, match="Unknown validator backend"):
-            get_validator(backend="nonexistent")
-
-    def test_js_backend_without_path_raises(self):
-        """backend='js' without valid path should raise RuntimeError."""
+    def test_require_js_without_path_raises(self):
+        """require_js=True without valid path should raise RuntimeError."""
         with pytest.raises(RuntimeError):
-            get_validator(backend="js", validator_path="/nonexistent/path")
+            get_validator(require_js=True, validator_path="/nonexistent/path")
 
-    def test_auto_backend_returns_validator(self):
-        """backend='auto' should return some validator."""
-        validator = get_validator(backend="auto")
+    def test_default_returns_validator(self):
+        """Default call should return some validator."""
+        validator = get_validator()
         assert hasattr(validator, "validate")
 
 

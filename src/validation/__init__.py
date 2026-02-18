@@ -2,13 +2,13 @@
 
 This module provides HED validation and tag suggestion capabilities:
 
-- HedPythonValidator: Validates HED strings using hedtools Python library
+- HedPythonValidator: Validates HED strings using hed-python library
 - HedJavaScriptValidator: Validates HED strings using hed-javascript (legacy)
 - HedLspClient: Suggests HED tags using hed-lsp CLI
 - get_validator: Factory function to get the appropriate validator
 - is_hed_lsp_available: Check if hed-lsp CLI is installed
 
-Note: Imports are lazy to avoid requiring hedtools for hed-lsp functionality.
+Note: Imports are lazy to avoid requiring hed-python for hed-lsp functionality.
 """
 
 from typing import TYPE_CHECKING
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     )
 
 __all__ = [
-    # Validators (requires hedtools)
+    # Validators (requires hed-python)
     "HedPythonValidator",
     "HedJavaScriptValidator",
     "get_validator",
@@ -53,7 +53,7 @@ __all__ = [
 
 
 def __getattr__(name: str) -> object:
-    """Lazy import for hed_validator components that require hedtools."""
+    """Lazy import for hed_validator components that require hed-python."""
     if name in (
         "HedPythonValidator",
         "HedJavaScriptValidator",
