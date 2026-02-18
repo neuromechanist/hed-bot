@@ -382,7 +382,7 @@ class HedAnnotationWorkflow:
     async def run(
         self,
         input_description: str,
-        schema_version: str = "8.3.0",
+        schema_version: str = "8.4.0",
         max_validation_attempts: int = 5,
         max_total_iterations: int = 10,
         run_assessment: bool = False,

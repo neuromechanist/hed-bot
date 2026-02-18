@@ -47,7 +47,7 @@ def is_js_validator_available(validator_path: Path | str | None = None) -> bool:
 
 
 def get_validator(
-    schema_version: str = "8.3.0",
+    schema_version: str = "8.4.0",
     prefer_js: bool = True,
     require_js: bool = False,
     validator_path: Path | str | None = None,
@@ -205,7 +205,7 @@ class HedJavaScriptValidator:
     def __init__(
         self,
         validator_path: Path,
-        schema_version: str = "8.3.0",
+        schema_version: str = "8.4.0",
     ) -> None:
         """Initialize JavaScript validator.
 
