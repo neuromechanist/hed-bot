@@ -17,6 +17,7 @@ from src.validation.hed_validator import (
     HedJavaScriptValidator,
     HedPythonValidator,
     ValidationResult,
+    get_validator,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,29 +78,34 @@ class ValidationAgent:
         validator_path: Path | None = None,
         tests_json_path: Path | str | None = None,
         use_hed_lsp: bool = True,
+        validator_backend: str = "auto",
     ) -> None:
         """Initialize the validation agent.
 
         Args:
             schema_loader: HED schema loader
-            use_javascript: Whether to use JavaScript validator (more detailed)
+            use_javascript: Whether to use JavaScript validator (more detailed).
+                Ignored when validator_backend is explicitly set to a non-"auto" value.
             validator_path: Path to hed-javascript repository (required if use_javascript=True)
             tests_json_path: Optional path to javascriptTests.json for error remediation
             use_hed_lsp: Whether to use hed-lsp for tag suggestions (auto-detected)
+            validator_backend: Validator backend ("auto", "js", "python", "hedtools")
         """
         self.schema_loader = schema_loader
         self.use_javascript = use_javascript
+        self.validator_backend = validator_backend
+        self.validator_path = validator_path
         self.error_remediator = get_remediator(tests_json_path)
         self.use_hed_lsp = use_hed_lsp and is_hed_lsp_available()
 
-        # Declare validators with proper types
-        self.js_validator: HedJavaScriptValidator | None = None
-        self.py_validator: HedPythonValidator | None = None
+        # Validator is lazily initialized on first use via _get_or_create_validator
+        self._validator: HedJavaScriptValidator | HedPythonValidator | None = None
 
-        if use_javascript:
+        # Legacy: direct JS validator creation when backend is "auto" and use_javascript=True
+        if validator_backend == "auto" and use_javascript:
             if validator_path is None:
                 raise ValueError("validator_path required when use_javascript=True")
-            self.js_validator = HedJavaScriptValidator(validator_path)
+            self._validator = HedJavaScriptValidator(validator_path)
 
     def _extract_problematic_tags(self, errors: list, warnings: list) -> list[str]:
         """Extract problematic tag names from validation errors and warnings.
@@ -232,6 +238,31 @@ class ValidationAgent:
 
         return result_dict
 
+    def _get_or_create_validator(
+        self, schema_version: str
+    ) -> HedJavaScriptValidator | HedPythonValidator:
+        """Get or create the appropriate validator.
+
+        Uses the configured backend to select the validator. The validator is
+        cached after first creation.
+
+        Args:
+            schema_version: Schema version for validation
+
+        Returns:
+            Configured validator instance
+        """
+        if self._validator is not None:
+            return self._validator
+
+        self._validator = get_validator(
+            schema_version=schema_version,
+            prefer_js=self.use_javascript,
+            validator_path=self.validator_path,
+            backend=self.validator_backend,
+        )
+        return self._validator
+
     def _run_validation(self, annotation: str, schema_version: str) -> ValidationResult:
         """Run validation on an annotation string.
 
@@ -242,14 +273,8 @@ class ValidationAgent:
         Returns:
             ValidationResult with errors and warnings
         """
-        if self.use_javascript and self.js_validator:
-            return self.js_validator.validate(annotation)
-        else:
-            # Use Python validator
-            schema = self.schema_loader.load_schema(schema_version)
-            if self.py_validator is None:
-                self.py_validator = HedPythonValidator(schema)
-            return self.py_validator.validate(annotation)
+        validator = self._get_or_create_validator(schema_version)
+        return validator.validate(annotation)
 
     def _extract_extended_tags(self, result: ValidationResult) -> list[str]:
         """Extract extended tags from TAG_EXTENDED warnings.
