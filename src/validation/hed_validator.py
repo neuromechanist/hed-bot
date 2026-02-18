@@ -12,7 +12,6 @@ import logging
 import os
 import shutil
 import subprocess
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -20,6 +19,8 @@ from hed import HedString
 from hed.errors import get_printable_issue_string
 from hed.schema import HedSchema, load_schema_version
 from hed.validator import HedValidator
+
+from src.validation.validation_types import ValidationIssue, ValidationResult
 
 if TYPE_CHECKING:
     from src.validation.hedtools_validator import HedToolsAPIValidator
@@ -149,42 +150,6 @@ def get_validator(
     )
     schema = load_schema_version(schema_version)
     return HedPythonValidator(schema=schema)
-
-
-@dataclass
-class ValidationIssue:
-    """Represents a single validation issue (error or warning).
-
-    Attributes:
-        code: Issue code (e.g., 'TAG_INVALID')
-        level: Severity level ('error' or 'warning')
-        message: Human-readable error message
-        tag: The problematic tag (if applicable)
-        context: Additional context information
-    """
-
-    code: str
-    level: Literal["error", "warning"]
-    message: str
-    tag: str | None = None
-    context: dict | None = None
-
-
-@dataclass
-class ValidationResult:
-    """Result of HED string validation.
-
-    Attributes:
-        is_valid: Whether the HED string is valid
-        errors: List of error issues
-        warnings: List of warning issues
-        parsed_string: Successfully parsed HED string (if valid)
-    """
-
-    is_valid: bool
-    errors: list[ValidationIssue]
-    warnings: list[ValidationIssue]
-    parsed_string: str | None = None
 
 
 class HedPythonValidator:

@@ -12,7 +12,7 @@ import time
 
 import httpx
 
-from src.validation.hed_validator import ValidationIssue, ValidationResult
+from src.validation.validation_types import ValidationIssue, ValidationResult
 
 logger = logging.getLogger(__name__)
 
