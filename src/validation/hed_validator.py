@@ -1,7 +1,8 @@
-"""HED validation using both Python and JavaScript validators.
+"""HED validation using Python, JavaScript, and hedtools.org REST API validators.
 
-This module provides integration with HED validation tools, primarily using
-the JavaScript validator for comprehensive feedback, with Python fallback.
+This module provides integration with HED validation tools. The validator factory
+supports multiple backends: JavaScript (most detailed), hedtools.org REST API
+(zero local dependency), and Python (always available fallback).
 """
 
 from __future__ import annotations
@@ -51,22 +52,57 @@ def get_validator(
     prefer_js: bool = True,
     require_js: bool = False,
     validator_path: Path | str | None = None,
+    backend: str = "auto",
 ) -> HedPythonValidator | HedJavaScriptValidator:
     """Get the appropriate HED validator based on availability and preferences.
 
     Args:
         schema_version: HED schema version (e.g., "8.3.0", "8.4.0")
-        prefer_js: If True, prefer JavaScript validator when available
+        prefer_js: If True, prefer JavaScript validator when available (ignored if backend is set)
         require_js: If True, raise error if JavaScript validator unavailable (no fallback)
         validator_path: Path to hed-javascript. If None, uses HED_VALIDATOR_PATH env var.
+        backend: Validator backend to use. Options:
+            - "auto": JS -> hedtools -> Python (default)
+            - "js": Force JavaScript validator
+            - "python": Force Python validator
+            - "hedtools": Force hedtools.org REST API validator
 
     Returns:
-        Configured validator instance (JavaScript or Python)
+        Configured validator instance
 
     Raises:
-        RuntimeError: If require_js=True and JavaScript validator is unavailable
+        RuntimeError: If require_js=True and JavaScript validator is unavailable,
+                      or if a forced backend is unavailable
     """
-    # Resolve validator path
+    from src.validation.hedtools_validator import HedToolsAPIValidator, is_hedtools_available
+
+    # Handle explicit backend selection
+    if backend == "hedtools":
+        if not is_hedtools_available():
+            raise RuntimeError(
+                "hedtools.org REST API is not reachable. "
+                "Check your internet connection or try backend='auto'."
+            )
+        return HedToolsAPIValidator(schema_version=schema_version)
+
+    if backend == "python":
+        schema = load_schema_version(schema_version)
+        return HedPythonValidator(schema=schema)
+
+    if backend == "js":
+        if validator_path is None:
+            validator_path = os.environ.get("HED_VALIDATOR_PATH")
+        if not is_js_validator_available(validator_path):
+            raise RuntimeError(
+                "JavaScript validator required but unavailable. "
+                "Ensure Node.js is installed and HED_VALIDATOR_PATH is set."
+            )
+        return HedJavaScriptValidator(
+            validator_path=Path(validator_path),
+            schema_version=schema_version,
+        )
+
+    # Auto mode: JS -> hedtools -> Python
     if validator_path is None:
         validator_path = os.environ.get("HED_VALIDATOR_PATH")
 
@@ -83,6 +119,10 @@ def get_validator(
             validator_path=Path(validator_path),
             schema_version=schema_version,
         )
+
+    # Try hedtools.org before falling back to Python
+    if is_hedtools_available():
+        return HedToolsAPIValidator(schema_version=schema_version)
 
     # Fall back to Python validator
     schema = load_schema_version(schema_version)
