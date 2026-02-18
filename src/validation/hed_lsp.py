@@ -364,24 +364,11 @@ def suggest_tags_for_keywords(
     for keyword in keywords:
         result = client.suggest(keyword)
         if result.success:
-            tags = [s.tag for s in result.suggestions]
+            results[keyword] = [s.tag for s in result.suggestions]
         else:
             logger.warning(f"hed-lsp suggestion failed for keyword '{keyword}': {result.error}")
-            tags = []
+            results[keyword] = []
             failed_keywords.append(keyword)
-
-        # Fallback: if no results and keyword contains hyphens, search individual parts.
-        # e.g. "Muscle-artifact" -> search "Muscle", "artifact" separately and merge.
-        if not tags and "-" in keyword:
-            parts = [p for p in keyword.split("-") if p]
-            for part in parts:
-                part_result = client.suggest(part)
-                if part_result.success:
-                    for s in part_result.suggestions:
-                        if s.tag not in tags:
-                            tags.append(s.tag)
-
-        results[keyword] = tags
 
     if failed_keywords:
         logger.warning(f"Failed to get suggestions for {len(failed_keywords)} keywords")
