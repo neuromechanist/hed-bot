@@ -1,8 +1,7 @@
-"""HED validation using Python, JavaScript, and hedtools.org REST API validators.
+"""HED validation using Python and JavaScript validators.
 
 This module provides integration with HED validation tools. The validator factory
-supports multiple backends: JavaScript (most detailed), hedtools.org REST API
-(zero local dependency), and Python (always available fallback).
+supports JavaScript (most detailed) and Python (always available fallback) backends.
 """
 
 from __future__ import annotations
@@ -12,20 +11,52 @@ import logging
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from hed import HedString
 from hed.errors import get_printable_issue_string
 from hed.schema import HedSchema, load_schema_version
 from hed.validator import HedValidator
 
-from src.validation.validation_types import ValidationIssue, ValidationResult
-
-if TYPE_CHECKING:
-    from src.validation.hedtools_validator import HedToolsAPIValidator
-
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ValidationIssue:
+    """Represents a single validation issue (error or warning).
+
+    Attributes:
+        code: Issue code (e.g., 'TAG_INVALID')
+        level: Severity level ('error' or 'warning')
+        message: Human-readable error message
+        tag: The problematic tag (if applicable)
+        context: Additional context information
+    """
+
+    code: str
+    level: Literal["error", "warning"]
+    message: str
+    tag: str | None = None
+    context: dict | None = None
+
+
+@dataclass
+class ValidationResult:
+    """Result of HED string validation.
+
+    Attributes:
+        is_valid: Whether the HED string is valid
+        errors: List of error issues
+        warnings: List of warning issues
+        parsed_string: Successfully parsed HED string (if valid)
+    """
+
+    is_valid: bool
+    errors: list[ValidationIssue]
+    warnings: list[ValidationIssue]
+    parsed_string: str | None = None
 
 
 def is_js_validator_available(validator_path: Path | str | None = None) -> bool:
@@ -51,40 +82,26 @@ def is_js_validator_available(validator_path: Path | str | None = None) -> bool:
     return path.exists() and (path / "dist" / "commonjs" / "index.js").exists()
 
 
-ValidatorBackend = Literal["auto", "js", "python", "hedtools"]
-
-
 def get_validator(
     schema_version: str = "8.4.0",
     prefer_js: bool = True,
     require_js: bool = False,
     validator_path: Path | str | None = None,
-    backend: ValidatorBackend = "auto",
-) -> HedPythonValidator | HedJavaScriptValidator | HedToolsAPIValidator:
+) -> HedPythonValidator | HedJavaScriptValidator:
     """Get the appropriate HED validator based on availability and preferences.
 
     Args:
         schema_version: HED schema version (e.g., "8.3.0", "8.4.0")
         prefer_js: If True, prefer JavaScript validator when available.
-            Only used in auto mode; ignored when backend is "js", "python", or "hedtools".
         require_js: If True, raise error if JavaScript validator unavailable (no fallback)
         validator_path: Path to hed-javascript. If None, uses HED_VALIDATOR_PATH env var.
-        backend: Validator backend to use. Options:
-            - "auto": JS -> hedtools -> Python (default)
-            - "js": Force JavaScript validator
-            - "python": Force Python validator
-            - "hedtools": Force hedtools.org REST API validator
 
     Returns:
         Configured validator instance
 
     Raises:
-        RuntimeError: If require_js=True and JavaScript validator is unavailable,
-                      or if a forced backend is unavailable
-        ValueError: If backend is not a recognized value
+        RuntimeError: If require_js=True and JavaScript validator is unavailable
     """
-    from src.validation.hedtools_validator import HedToolsAPIValidator, is_hedtools_available
-
     # Resolve validator_path once from env if not provided
     if validator_path is None:
         validator_path = os.environ.get("HED_VALIDATOR_PATH")
@@ -94,34 +111,6 @@ def get_validator(
         "Ensure Node.js is installed and HED_VALIDATOR_PATH is set."
     )
 
-    # Explicit backend selection
-    if backend == "hedtools":
-        if not is_hedtools_available():
-            raise RuntimeError(
-                "hedtools.org REST API is not reachable. "
-                "Check your internet connection or try backend='auto'."
-            )
-        return HedToolsAPIValidator(schema_version=schema_version)
-
-    if backend == "python":
-        schema = load_schema_version(schema_version)
-        return HedPythonValidator(schema=schema)
-
-    if backend == "js":
-        if not is_js_validator_available(validator_path):
-            raise RuntimeError(js_unavailable_msg)
-        return HedJavaScriptValidator(
-            validator_path=Path(validator_path),
-            schema_version=schema_version,
-        )
-
-    if backend != "auto":
-        raise ValueError(
-            f"Unknown validator backend: {backend!r}. "
-            "Valid options: 'auto', 'js', 'python', 'hedtools'."
-        )
-
-    # Auto mode: JS -> hedtools -> Python
     js_available = is_js_validator_available(validator_path)
 
     if require_js and not js_available:
@@ -136,18 +125,12 @@ def get_validator(
 
     if prefer_js and not js_available:
         logger.warning(
-            "JavaScript validator preferred but unavailable (path=%s), trying alternatives",
+            "JavaScript validator preferred but unavailable (path=%s), "
+            "falling back to Python HED validator",
             validator_path,
         )
 
-    if is_hedtools_available():
-        logger.info("Using hedtools.org REST API validator")
-        return HedToolsAPIValidator(schema_version=schema_version)
-
-    logger.warning(
-        "Neither JavaScript nor hedtools.org validators available, "
-        "falling back to Python HED validator"
-    )
+    logger.info("Using Python HED validator (schema=%s)", schema_version)
     schema = load_schema_version(schema_version)
     return HedPythonValidator(schema=schema)
 
@@ -211,7 +194,7 @@ class HedPythonValidator:
             )
 
         except Exception as e:
-            # Catch parsing errors
+            logger.warning("HED string validation failed: %s", e, exc_info=True)
             errors.append(
                 ValidationIssue(
                     code="PARSE_ERROR",
@@ -389,6 +372,7 @@ class HedJavaScriptValidator:
             )
 
         except subprocess.TimeoutExpired:
+            logger.warning("JavaScript validation timed out after 30s")
             return ValidationResult(
                 is_valid=False,
                 errors=[
@@ -400,7 +384,21 @@ class HedJavaScriptValidator:
                 ],
                 warnings=[],
             )
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            logger.error("JavaScript validator failed: %s", e)
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationIssue(
+                        code="VALIDATION_ERROR",
+                        level="error",
+                        message=f"Validation failed: {e}",
+                    )
+                ],
+                warnings=[],
+            )
         except Exception as e:
+            logger.error("Unexpected error in JavaScript validation: %s", e, exc_info=True)
             return ValidationResult(
                 is_valid=False,
                 errors=[

@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from src.agents.state import HedAnnotationState
 from src.utils.error_remediation import get_remediator
@@ -21,12 +20,8 @@ from src.validation.hed_validator import (
     HedPythonValidator,
     ValidationIssue,
     ValidationResult,
-    ValidatorBackend,
     get_validator,
 )
-
-if TYPE_CHECKING:
-    from src.validation.hedtools_validator import HedToolsAPIValidator
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +61,9 @@ def strip_extensions(annotation: str, extended_tags: list[str]) -> str:
 class ValidationAgent:
     """Agent that validates HED annotations using HED validation tools.
 
-    Supports multiple validator backends: JavaScript (detailed feedback), hedtools.org
-    REST API (zero local dependency), and Python (always available fallback).
-    Uses hed-lsp CLI for suggesting valid tag alternatives when available.
+    Supports JavaScript (detailed feedback) and Python (always available fallback)
+    validator backends. Uses hed-lsp CLI for suggesting valid tag alternatives
+    when available.
     """
 
     # Error codes that indicate invalid or extended tags
@@ -87,33 +82,27 @@ class ValidationAgent:
         validator_path: Path | None = None,
         tests_json_path: Path | str | None = None,
         use_hed_lsp: bool = True,
-        validator_backend: ValidatorBackend = "auto",
     ) -> None:
         """Initialize the validation agent.
 
         Args:
             schema_loader: HED schema loader
-            use_javascript: Whether to use JavaScript validator (more detailed).
-                Ignored when validator_backend is explicitly set to a non-"auto" value.
+            use_javascript: Whether to use JavaScript validator (more detailed)
             validator_path: Path to hed-javascript repository (required if use_javascript=True)
             tests_json_path: Optional path to javascriptTests.json for error remediation
             use_hed_lsp: Whether to use hed-lsp for tag suggestions (auto-detected)
-            validator_backend: Validator backend ("auto", "js", "python", "hedtools")
         """
         self.schema_loader = schema_loader
         self.use_javascript = use_javascript
-        self.validator_backend = validator_backend
         self.validator_path = validator_path
         self.error_remediator = get_remediator(tests_json_path)
         self.use_hed_lsp = use_hed_lsp and is_hed_lsp_available()
 
         # Validator is lazily initialized on first use via _get_or_create_validator
-        self._validator: (
-            HedJavaScriptValidator | HedPythonValidator | HedToolsAPIValidator | None
-        ) = None
+        self._validator: HedJavaScriptValidator | HedPythonValidator | None = None
 
-        # Legacy: direct JS validator creation when backend is "auto" and use_javascript=True
-        if validator_backend == "auto" and use_javascript:
+        # Direct JS validator creation when use_javascript=True
+        if use_javascript:
             if validator_path is None:
                 raise ValueError("validator_path required when use_javascript=True")
             self._validator = HedJavaScriptValidator(validator_path)
@@ -251,11 +240,10 @@ class ValidationAgent:
 
     def _get_or_create_validator(
         self, schema_version: str
-    ) -> HedJavaScriptValidator | HedPythonValidator | HedToolsAPIValidator:
+    ) -> HedJavaScriptValidator | HedPythonValidator:
         """Get or create the appropriate validator.
 
-        Uses the configured backend to select the validator. The validator is
-        cached after first creation.
+        The validator is cached after first creation.
 
         Args:
             schema_version: Schema version for validation
@@ -270,7 +258,6 @@ class ValidationAgent:
             schema_version=schema_version,
             prefer_js=self.use_javascript,
             validator_path=self.validator_path,
-            backend=self.validator_backend,
         )
         return self._validator
 
@@ -287,11 +274,7 @@ class ValidationAgent:
         try:
             validator = self._get_or_create_validator(schema_version)
         except (RuntimeError, ValueError, OSError) as e:
-            logger.error(
-                "Failed to initialize validator (backend=%s): %s",
-                self.validator_backend,
-                e,
-            )
+            logger.error("Failed to initialize validator: %s", e)
             return ValidationResult(
                 is_valid=False,
                 errors=[
@@ -299,6 +282,19 @@ class ValidationAgent:
                         code="VALIDATOR_INIT_ERROR",
                         level="error",
                         message=f"Validator initialization failed: {e}",
+                    )
+                ],
+                warnings=[],
+            )
+        except Exception as e:
+            logger.error("Unexpected error initializing validator: %s", e, exc_info=True)
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationIssue(
+                        code="VALIDATOR_INIT_ERROR",
+                        level="error",
+                        message=f"Unexpected validator error: {e}",
                     )
                 ],
                 warnings=[],
@@ -374,12 +370,12 @@ class ValidationAgent:
 
         except Exception as e:
             # If parsing fails, try regex-based detection as fallback
-            logger.debug("HedString parsing failed, falling back to regex: %s", e)
+            logger.warning("HedString parsing failed, falling back to regex: %s", e)
             try:
                 schema = load_schema_version(schema_version)
                 extended_tags = self._detect_extensions_via_regex(annotation, schema)
             except Exception as e2:
-                logger.debug("Regex fallback also failed: %s", e2)
+                logger.warning("Regex fallback also failed: %s", e2)
 
         return extended_tags
 

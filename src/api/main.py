@@ -86,7 +86,6 @@ def create_openrouter_workflow(
     schema_dir: str | Path | None = None,
     validator_path: str | Path | None = None,
     use_js_validator: bool = True,
-    validator_backend: str = "auto",
 ) -> HedAnnotationWorkflow:
     """Create a workflow with OpenRouter LLMs.
 
@@ -104,7 +103,6 @@ def create_openrouter_workflow(
         schema_dir: Path to HED schemas (None = fetch from GitHub)
         validator_path: Path to hed-javascript (None = use auto fallback chain)
         use_js_validator: Whether to use JavaScript validator
-        validator_backend: Validator backend ("auto", "js", "python", "hedtools")
 
     Returns:
         Configured HedAnnotationWorkflow
@@ -174,7 +172,6 @@ def create_openrouter_workflow(
         schema_dir=Path(schema_dir) if schema_dir else None,
         validator_path=Path(validator_path) if validator_path else None,
         use_js_validator=actual_use_js,
-        validator_backend=validator_backend,
     )
 
 
@@ -217,7 +214,6 @@ def create_byok_workflow(
         schema_dir=_byok_config.get("schema_dir"),
         validator_path=_byok_config.get("validator_path"),
         use_js_validator=_byok_config.get("use_js_validator", True),
-        validator_backend=_byok_config.get("validator_backend", "auto"),
     )
 
 
@@ -328,13 +324,6 @@ async def lifespan(app: FastAPI):
     )
 
     use_js_validator = os.getenv("USE_JS_VALIDATOR", "true").lower() == "true"
-    validator_backend = os.getenv("VALIDATOR_BACKEND", "auto")
-    _valid_backends = {"auto", "js", "python", "hedtools"}
-    if validator_backend not in _valid_backends:
-        raise ValueError(
-            f"Invalid VALIDATOR_BACKEND={validator_backend!r}. "
-            f"Valid options: {', '.join(sorted(_valid_backends))}"
-        )
 
     # Cache BYOK configuration for on-demand workflow creation
     global _byok_config
@@ -344,7 +333,6 @@ async def lifespan(app: FastAPI):
         "schema_dir": schema_dir,
         "validator_path": validator_path,
         "use_js_validator": use_js_validator,
-        "validator_backend": validator_backend,
     }
 
     print(f"Environment: {'Docker' if Path('/app').exists() else 'Local'}")
@@ -373,7 +361,6 @@ async def lifespan(app: FastAPI):
             schema_dir=schema_dir,
             validator_path=validator_path if use_js_validator else None,
             use_js_validator=use_js_validator,
-            validator_backend=validator_backend,
         )
     else:
         # Ollama configuration (default)
@@ -638,7 +625,6 @@ async def annotate(
                 schema_dir=_byok_config.get("schema_dir"),
                 validator_path=_byok_config.get("validator_path"),
                 use_js_validator=_byok_config.get("use_js_validator", True),
-                validator_backend=_byok_config.get("validator_backend", "auto"),
             )
         except Exception as e:
             raise HTTPException(
@@ -810,7 +796,6 @@ async def annotate_from_image(
                 schema_dir=_byok_config.get("schema_dir"),
                 validator_path=_byok_config.get("validator_path"),
                 use_js_validator=_byok_config.get("use_js_validator", True),
-                validator_backend=_byok_config.get("validator_backend", "auto"),
             )
             # Note: Vision agent uses its own provider (deepinfra/fp8 for qwen-vl)
             # Only pass provider_override to vision if a custom vision_model was specified
@@ -995,7 +980,6 @@ async def annotate_stream(
                 schema_dir=_byok_config.get("schema_dir"),
                 validator_path=_byok_config.get("validator_path"),
                 use_js_validator=_byok_config.get("use_js_validator", True),
-                validator_backend=_byok_config.get("validator_backend", "auto"),
             )
         except Exception as e:
             raise HTTPException(
@@ -1230,7 +1214,6 @@ async def annotate_from_image_stream(
                 schema_dir=_byok_config.get("schema_dir"),
                 validator_path=_byok_config.get("validator_path"),
                 use_js_validator=_byok_config.get("use_js_validator", True),
-                validator_backend=_byok_config.get("validator_backend", "auto"),
             )
             # Note: Vision agent uses its own provider (deepinfra/fp8 for qwen-vl)
             # Only pass provider_override to vision if a custom vision_model was specified
