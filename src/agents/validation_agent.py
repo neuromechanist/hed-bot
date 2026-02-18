@@ -286,6 +286,19 @@ class ValidationAgent:
                 ],
                 warnings=[],
             )
+        except Exception as e:
+            logger.error("Unexpected error initializing validator: %s", e, exc_info=True)
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationIssue(
+                        code="VALIDATOR_INIT_ERROR",
+                        level="error",
+                        message=f"Unexpected validator error: {e}",
+                    )
+                ],
+                warnings=[],
+            )
         return validator.validate(annotation)
 
     def _extract_extended_tags(self, result: ValidationResult) -> list[str]:
@@ -357,12 +370,12 @@ class ValidationAgent:
 
         except Exception as e:
             # If parsing fails, try regex-based detection as fallback
-            logger.debug("HedString parsing failed, falling back to regex: %s", e)
+            logger.warning("HedString parsing failed, falling back to regex: %s", e)
             try:
                 schema = load_schema_version(schema_version)
                 extended_tags = self._detect_extensions_via_regex(annotation, schema)
             except Exception as e2:
-                logger.debug("Regex fallback also failed: %s", e2)
+                logger.warning("Regex fallback also failed: %s", e2)
 
         return extended_tags
 

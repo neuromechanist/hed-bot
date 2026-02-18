@@ -130,6 +130,7 @@ def get_validator(
             validator_path,
         )
 
+    logger.info("Using Python HED validator (schema=%s)", schema_version)
     schema = load_schema_version(schema_version)
     return HedPythonValidator(schema=schema)
 
@@ -193,7 +194,7 @@ class HedPythonValidator:
             )
 
         except Exception as e:
-            # Catch parsing errors
+            logger.warning("HED string validation failed: %s", e, exc_info=True)
             errors.append(
                 ValidationIssue(
                     code="PARSE_ERROR",
@@ -371,6 +372,7 @@ class HedJavaScriptValidator:
             )
 
         except subprocess.TimeoutExpired:
+            logger.warning("JavaScript validation timed out after 30s")
             return ValidationResult(
                 is_valid=False,
                 errors=[
@@ -382,7 +384,21 @@ class HedJavaScriptValidator:
                 ],
                 warnings=[],
             )
+        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+            logger.error("JavaScript validator failed: %s", e)
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationIssue(
+                        code="VALIDATION_ERROR",
+                        level="error",
+                        message=f"Validation failed: {e}",
+                    )
+                ],
+                warnings=[],
+            )
         except Exception as e:
+            logger.error("Unexpected error in JavaScript validation: %s", e, exc_info=True)
             return ValidationResult(
                 is_valid=False,
                 errors=[
