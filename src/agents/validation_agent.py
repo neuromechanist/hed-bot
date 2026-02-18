@@ -5,9 +5,12 @@ and provides detailed feedback for corrections. When invalid tags are found,
 it uses hed-lsp CLI to suggest valid alternatives.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.agents.state import HedAnnotationState
 from src.utils.error_remediation import get_remediator
@@ -16,9 +19,14 @@ from src.validation.hed_lsp import is_hed_lsp_available, suggest_tags_for_keywor
 from src.validation.hed_validator import (
     HedJavaScriptValidator,
     HedPythonValidator,
+    ValidationIssue,
     ValidationResult,
+    ValidatorBackend,
     get_validator,
 )
+
+if TYPE_CHECKING:
+    from src.validation.hedtools_validator import HedToolsAPIValidator
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +66,8 @@ def strip_extensions(annotation: str, extended_tags: list[str]) -> str:
 class ValidationAgent:
     """Agent that validates HED annotations using HED validation tools.
 
-    Supports both JavaScript validator (detailed feedback) and Python validator (fallback).
+    Supports multiple validator backends: JavaScript (detailed feedback), hedtools.org
+    REST API (zero local dependency), and Python (always available fallback).
     Uses hed-lsp CLI for suggesting valid tag alternatives when available.
     """
 
@@ -78,7 +87,7 @@ class ValidationAgent:
         validator_path: Path | None = None,
         tests_json_path: Path | str | None = None,
         use_hed_lsp: bool = True,
-        validator_backend: str = "auto",
+        validator_backend: ValidatorBackend = "auto",
     ) -> None:
         """Initialize the validation agent.
 
@@ -99,7 +108,9 @@ class ValidationAgent:
         self.use_hed_lsp = use_hed_lsp and is_hed_lsp_available()
 
         # Validator is lazily initialized on first use via _get_or_create_validator
-        self._validator: HedJavaScriptValidator | HedPythonValidator | None = None
+        self._validator: (
+            HedJavaScriptValidator | HedPythonValidator | HedToolsAPIValidator | None
+        ) = None
 
         # Legacy: direct JS validator creation when backend is "auto" and use_javascript=True
         if validator_backend == "auto" and use_javascript:
@@ -240,7 +251,7 @@ class ValidationAgent:
 
     def _get_or_create_validator(
         self, schema_version: str
-    ) -> HedJavaScriptValidator | HedPythonValidator:
+    ) -> HedJavaScriptValidator | HedPythonValidator | HedToolsAPIValidator:
         """Get or create the appropriate validator.
 
         Uses the configured backend to select the validator. The validator is
@@ -273,7 +284,25 @@ class ValidationAgent:
         Returns:
             ValidationResult with errors and warnings
         """
-        validator = self._get_or_create_validator(schema_version)
+        try:
+            validator = self._get_or_create_validator(schema_version)
+        except (RuntimeError, ValueError, OSError) as e:
+            logger.error(
+                "Failed to initialize validator (backend=%s): %s",
+                self.validator_backend,
+                e,
+            )
+            return ValidationResult(
+                is_valid=False,
+                errors=[
+                    ValidationIssue(
+                        code="VALIDATOR_INIT_ERROR",
+                        level="error",
+                        message=f"Validator initialization failed: {e}",
+                    )
+                ],
+                warnings=[],
+            )
         return validator.validate(annotation)
 
     def _extract_extended_tags(self, result: ValidationResult) -> list[str]:

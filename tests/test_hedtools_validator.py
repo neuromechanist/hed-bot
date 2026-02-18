@@ -21,7 +21,7 @@ class TestHedToolsAvailability:
         assert is_hedtools_available(base_url="https://nonexistent.invalid") is False
 
     def test_hedtools_timeout(self):
-        """Very short timeout should return False for slow connections."""
+        """Very short timeout should still return a boolean."""
         result = is_hedtools_available(timeout=0.001)
         # May or may not be False depending on connection speed
         assert isinstance(result, bool)
@@ -118,7 +118,7 @@ class TestHedToolsErrorParsing:
     """Tests for error data parsing."""
 
     def test_parse_empty_error(self):
-        """Empty error data should produce single error."""
+        """Empty error data should produce no issues."""
         validator = HedToolsAPIValidator()
         errors, warnings = validator._parse_error_data("")
         assert len(errors) == 0
@@ -167,3 +167,41 @@ class TestHedToolsErrorParsing:
         )
         assert result.is_valid is False
         assert len(result.errors) > 0
+
+    def test_parse_error_data_unexpected_type(self):
+        """Non-str, non-list input should produce a PARSE_ERROR."""
+        validator = HedToolsAPIValidator()
+        errors, warnings = validator._parse_error_data({"key": "value"})
+        assert len(errors) == 1
+        assert errors[0].code == "PARSE_ERROR"
+        assert len(warnings) == 0
+
+    def test_parse_error_data_warning_codes(self):
+        """TAG_EXTENDED should be classified as warning, not error."""
+        validator = HedToolsAPIValidator()
+        errors, warnings = validator._parse_error_data("TAG_EXTENDED: 'Animal/Marmoset' extended")
+        assert len(warnings) == 1
+        assert warnings[0].code == "TAG_EXTENDED"
+        assert len(errors) == 0
+
+    def test_parse_error_data_mixed_codes(self):
+        """Mix of error and warning codes should be correctly classified."""
+        validator = HedToolsAPIValidator()
+        errors, warnings = validator._parse_error_data(
+            [
+                "TAG_INVALID: 'BadTag' not valid",
+                "TAG_EXTENDED: 'Animal/Cat' extended",
+            ]
+        )
+        assert len(errors) == 1
+        assert errors[0].code == "TAG_INVALID"
+        assert len(warnings) == 1
+        assert warnings[0].code == "TAG_EXTENDED"
+
+    def test_parse_error_data_unrecognized_format(self):
+        """Lines without CODE: prefix should get VALIDATION_ERROR code."""
+        validator = HedToolsAPIValidator()
+        errors, warnings = validator._parse_error_data("some unknown error format")
+        assert len(errors) == 1
+        assert errors[0].code == "VALIDATION_ERROR"
+        assert errors[0].message == "some unknown error format"

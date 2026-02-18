@@ -72,8 +72,7 @@ def _build_no_extend_warning() -> str:
     Returns:
         Warning text for when extensions are prohibited
     """
-    return """
-## EXTENSIONS STRICTLY PROHIBITED - USE ONLY EXISTING VOCABULARY
+    return """## EXTENSIONS STRICTLY PROHIBITED - USE ONLY EXISTING VOCABULARY
 
 **ABSOLUTE RULE**: You MUST NOT create any new tags. Only use tags that exist in the vocabulary below.
 

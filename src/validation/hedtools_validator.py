@@ -1,7 +1,7 @@
 """HED validation via the hedtools.org REST API.
 
 Provides remote validation without requiring local HED tools installation.
-Uses the hedtools.org services endpoint with CSRF token authentication.
+Uses the hedtools.org services endpoint with session cookies and CSRF token protection.
 """
 
 from __future__ import annotations
@@ -16,11 +16,20 @@ from src.validation.hed_validator import ValidationIssue, ValidationResult
 
 logger = logging.getLogger(__name__)
 
-# Default hedtools.org base URL
 HEDTOOLS_BASE_URL = "https://hedtools.org/hed"
+_SESSION_TTL = 300  # seconds; CSRF tokens expire, so refresh periodically
 
-# Session cache TTL in seconds (CSRF tokens expire; refresh periodically)
-_SESSION_TTL = 300  # 5 minutes
+# Warning-level error codes that should not count as validation failures
+_WARNING_CODES = frozenset({"TAG_EXTENDED", "SUGGESTION"})
+
+
+def _error_result(code: str, message: str) -> ValidationResult:
+    """Build a single-error ValidationResult for transport/session failures."""
+    return ValidationResult(
+        is_valid=False,
+        errors=[ValidationIssue(code=code, level="error", message=message)],
+        warnings=[],
+    )
 
 
 class HedToolsAPIValidator:
@@ -135,46 +144,16 @@ class HedToolsAPIValidator:
             return self._parse_response(result)
 
         except httpx.TimeoutException:
-            return ValidationResult(
-                is_valid=False,
-                errors=[
-                    ValidationIssue(
-                        code="TIMEOUT",
-                        level="error",
-                        message="hedtools.org validation timed out",
-                    )
-                ],
-                warnings=[],
-            )
+            logger.warning("hedtools.org validation timed out after %.1fs", self.timeout)
+            return _error_result("TIMEOUT", "hedtools.org validation timed out")
         except httpx.HTTPError as e:
             logger.warning("hedtools.org HTTP error: %s", e)
-            return ValidationResult(
-                is_valid=False,
-                errors=[
-                    ValidationIssue(
-                        code="HTTP_ERROR",
-                        level="error",
-                        message=f"hedtools.org request failed: {e}",
-                    )
-                ],
-                warnings=[],
-            )
+            return _error_result("HTTP_ERROR", f"hedtools.org request failed: {e}")
         except ValueError as e:
             logger.warning("hedtools.org session error: %s", e)
-            # Invalidate cached session on auth errors
             self._session_cookie = None
             self._csrf_token = None
-            return ValidationResult(
-                is_valid=False,
-                errors=[
-                    ValidationIssue(
-                        code="SESSION_ERROR",
-                        level="error",
-                        message=f"hedtools.org authentication failed: {e}",
-                    )
-                ],
-                warnings=[],
-            )
+            return _error_result("SESSION_ERROR", f"hedtools.org authentication failed: {e}")
 
     def _parse_response(self, result: dict) -> ValidationResult:
         """Parse the hedtools.org API response into a ValidationResult.
@@ -201,7 +180,7 @@ class HedToolsAPIValidator:
         errors, warnings = self._parse_error_data(error_data)
 
         return ValidationResult(
-            is_valid=len(errors) == 0,
+            is_valid=not errors,
             errors=errors,
             warnings=warnings,
         )
@@ -238,33 +217,22 @@ class HedToolsAPIValidator:
             return errors, warnings
 
         for line in lines:
-            line_str = str(line).strip()
-            if not line_str:
+            text = str(line).strip()
+            if not text:
                 continue
 
-            # Try to extract error code from line (e.g., "TAG_INVALID: ...")
-            code_match = re.match(r"([A-Z_]+):\s*(.*)", line_str)
+            # Extract structured error code (e.g., "TAG_INVALID: details...")
+            code_match = re.match(r"([A-Z_]+):\s*(.*)", text)
             if code_match:
                 code = code_match.group(1)
-                message = code_match.group(2) or line_str
+                message = code_match.group(2) or text
             else:
                 code = "VALIDATION_ERROR"
-                message = line_str
+                message = text
 
-            # Classify as warning or error based on code
-            warning_codes = {"TAG_EXTENDED", "SUGGESTION"}
-            level = "warning" if code in warning_codes else "error"
-
-            issue = ValidationIssue(
-                code=code,
-                level=level,
-                message=message,
-            )
-
-            if level == "warning":
-                warnings.append(issue)
-            else:
-                errors.append(issue)
+            level = "warning" if code in _WARNING_CODES else "error"
+            issue = ValidationIssue(code=code, level=level, message=message)
+            (warnings if level == "warning" else errors).append(issue)
 
         return errors, warnings
 
@@ -289,5 +257,6 @@ def is_hedtools_available(
             follow_redirects=True,
         )
         return response.status_code == 200
-    except httpx.HTTPError:
+    except Exception as e:
+        logger.debug("hedtools.org availability check failed: %s", e)
         return False

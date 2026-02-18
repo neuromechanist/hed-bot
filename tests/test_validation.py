@@ -240,12 +240,17 @@ class TestGetValidatorBackend:
 
     def test_hedtools_backend_unreachable_raises(self):
         """backend='hedtools' should raise when hedtools.org is unreachable."""
-        # We can't easily force unreachability, so this tests the error path
-        # by checking that the function at least accepts the parameter
-        try:
+        from src.validation.hedtools_validator import is_hedtools_available
+
+        if is_hedtools_available():
+            pytest.skip("hedtools.org is reachable; cannot test unreachable path")
+        with pytest.raises(RuntimeError, match="not reachable"):
             get_validator(backend="hedtools")
-        except RuntimeError as e:
-            assert "not reachable" in str(e)
+
+    def test_invalid_backend_raises_value_error(self):
+        """Unknown backend should raise ValueError."""
+        with pytest.raises(ValueError, match="Unknown validator backend"):
+            get_validator(backend="nonexistent")
 
     def test_js_backend_without_path_raises(self):
         """backend='js' without valid path should raise RuntimeError."""
@@ -256,12 +261,6 @@ class TestGetValidatorBackend:
         """backend='auto' should return some validator."""
         validator = get_validator(backend="auto")
         assert hasattr(validator, "validate")
-
-    def test_invalid_backend_falls_through(self):
-        """Unknown backend should fall through to auto behavior."""
-        # This tests that invalid backend names don't crash
-        validator = get_validator(backend="auto")
-        assert validator is not None
 
 
 @pytest.fixture

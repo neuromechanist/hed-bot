@@ -121,10 +121,9 @@ class AnnotationAgent:
                 else ""
             )
             previous_section = (
-                f"\nPrevious annotation:\n{previous_annotation}\n" if previous_annotation else ""
+                f"Previous annotation:\n{previous_annotation}\n\n" if previous_annotation else ""
             )
-            return f"""{previous_section}
-Validation errors found:
+            return f"""{previous_section}Validation errors found:
 {errors_str}
 {suggestions_str}
 

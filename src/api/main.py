@@ -102,8 +102,9 @@ def create_openrouter_workflow(
         temperature: LLM temperature (default: 0.1)
         user_id: User ID for cache optimization (derived from API key if not provided)
         schema_dir: Path to HED schemas (None = fetch from GitHub)
-        validator_path: Path to hed-javascript (None = use Python validator)
+        validator_path: Path to hed-javascript (None = use auto fallback chain)
         use_js_validator: Whether to use JavaScript validator
+        validator_backend: Validator backend ("auto", "js", "python", "hedtools")
 
     Returns:
         Configured HedAnnotationWorkflow
@@ -328,6 +329,12 @@ async def lifespan(app: FastAPI):
 
     use_js_validator = os.getenv("USE_JS_VALIDATOR", "true").lower() == "true"
     validator_backend = os.getenv("VALIDATOR_BACKEND", "auto")
+    _valid_backends = {"auto", "js", "python", "hedtools"}
+    if validator_backend not in _valid_backends:
+        raise ValueError(
+            f"Invalid VALIDATOR_BACKEND={validator_backend!r}. "
+            f"Valid options: {', '.join(sorted(_valid_backends))}"
+        )
 
     # Cache BYOK configuration for on-demand workflow creation
     global _byok_config
