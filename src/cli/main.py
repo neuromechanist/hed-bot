@@ -84,7 +84,7 @@ SchemaVersionOption = Annotated[
     typer.Option(
         "--schema",
         "-s",
-        help="HED schema version (e.g., 8.3.0, 8.4.0)",
+        help="HED schema version (default: 8.4.0)",
     ),
 ]
 
