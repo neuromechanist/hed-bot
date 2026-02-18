@@ -47,6 +47,7 @@ class HedAnnotationWorkflow:
         validator_path: Path | None = None,
         use_js_validator: bool = True,
         enable_semantic_search: bool = True,
+        validator_backend: str = "auto",
     ) -> None:
         """Initialize the workflow.
 
@@ -59,6 +60,7 @@ class HedAnnotationWorkflow:
             validator_path: Path to hed-javascript for validation
             use_js_validator: Whether to use JavaScript validator
             enable_semantic_search: Whether to use hed-lsp CLI for tag suggestions
+            validator_backend: Validator backend ("auto", "js", "python", "hedtools")
         """
         # Store schema directory (None means use HED library to fetch from GitHub)
         self.schema_dir = schema_dir
@@ -79,6 +81,7 @@ class HedAnnotationWorkflow:
             self.schema_loader,
             use_javascript=use_js_validator,
             validator_path=validator_path,
+            validator_backend=validator_backend,
         )
         self.evaluation_agent = EvaluationAgent(eval_llm, schema_dir=self.schema_dir)
         self.assessment_agent = AssessmentAgent(assess_llm, schema_dir=self.schema_dir)
