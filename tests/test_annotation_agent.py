@@ -107,7 +107,7 @@ class TestBuildUserPrompt:
             validation_errors=["[TAG_INVALID] 'Grass' is not valid"],
         )
 
-        assert "validation errors" in result
+        assert "Validation errors" in result
         assert "TAG_INVALID" in result
         assert "Suggested VALID HED tag" not in result
         assert "IMPORTANT: Replace" not in result
@@ -162,3 +162,90 @@ class TestBuildUserPrompt:
             tag_suggestions={"Bad": ["Good"]},
         )
         assert "CRITICAL: Output ONLY the raw HED annotation string" in result3
+
+    def test_previous_annotation_included_in_correction(self):
+        """Correction prompt should include the previous annotation."""
+        agent = self._make_agent()
+        result = agent._build_user_prompt(
+            "A red circle",
+            validation_errors=["[TAG_INVALID] 'Foobar' is not valid"],
+            previous_annotation="Sensory-event, Foobar, (Red, Circle)",
+        )
+
+        assert "Previous annotation:" in result
+        assert "Sensory-event, Foobar, (Red, Circle)" in result
+
+    def test_no_previous_annotation_on_first_pass(self):
+        """First pass should not mention previous annotation."""
+        agent = self._make_agent()
+        result = agent._build_user_prompt("A red circle")
+
+        assert "Previous annotation:" not in result
+
+    def test_no_previous_annotation_when_none(self):
+        """Correction without previous_annotation should not include section."""
+        agent = self._make_agent()
+        result = agent._build_user_prompt(
+            "A red circle",
+            validation_errors=["[TAG_INVALID] error"],
+            previous_annotation=None,
+        )
+
+        assert "Previous annotation:" not in result
+
+
+class TestPromptSections:
+    """Tests for prompt structure and sections."""
+
+    def test_correction_workflow_in_system_prompt(self):
+        """System prompt should contain the CORRECTION WORKFLOW section."""
+        from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
+
+        guide = get_comprehensive_hed_guide(
+            vocabulary_sample=["Red", "Circle", "Sensory-event"],
+            extendable_tags=["Animal"],
+        )
+
+        assert "## CORRECTION WORKFLOW" in guide
+        assert "TAG_INVALID" in guide
+        assert "TAG_EXTENSION_INVALID" in guide
+        assert "Fix ALL reported errors in a single pass" in guide
+
+    def test_output_format_in_system_prompt(self):
+        """System prompt should contain the OUTPUT FORMAT section."""
+        from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
+
+        guide = get_comprehensive_hed_guide(
+            vocabulary_sample=["Red"],
+            extendable_tags=[],
+        )
+
+        assert "## OUTPUT FORMAT" in guide
+        assert "Output ONLY the HED annotation string" in guide
+
+    def test_modular_sections_assembled(self):
+        """All expected sections should be present in the assembled guide."""
+        from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
+
+        guide = get_comprehensive_hed_guide(
+            vocabulary_sample=["Red", "Circle"],
+            extendable_tags=["Animal"],
+        )
+
+        expected_sections = [
+            "# HED ANNOTATION GUIDE",
+            "## CRITICAL RULE: CHECK VOCABULARY FIRST",
+            "## CORRECTION WORKFLOW",
+            "## SEMANTIC GROUPING RULES",
+            "## RELATION TAGS",
+            "## EXTENSION RULES",
+            "## DEFINITION SYSTEM",
+            "## TEMPORAL SCOPING",
+            "## SIDECAR SYNTAX",
+            "## COMMON PATTERNS",
+            "## VOCABULARY LOOKUP",
+            "## COMMON ERRORS AND TROUBLESHOOTING",
+            "## OUTPUT FORMAT",
+        ]
+        for section in expected_sections:
+            assert section in guide, f"Missing section: {section}"
