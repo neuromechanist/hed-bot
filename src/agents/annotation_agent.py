@@ -99,6 +99,7 @@ class AnnotationAgent:
         description: str,
         validation_errors: list[str] | None = None,
         tag_suggestions: dict[str, list[str]] | None = None,
+        previous_annotation: str | None = None,
     ) -> str:
         """Build the user prompt for annotation.
 
@@ -106,6 +107,7 @@ class AnnotationAgent:
             description: Natural language event description
             validation_errors: Previous validation errors (if retrying)
             tag_suggestions: LSP-suggested valid tags for invalid tags
+            previous_annotation: The previous annotation attempt (for targeted correction)
 
         Returns:
             User prompt string
@@ -118,35 +120,23 @@ class AnnotationAgent:
                 if suggestions_str
                 else ""
             )
-            return f"""Previous annotation had validation errors:
+            previous_section = (
+                f"\nPrevious annotation:\n{previous_annotation}\n" if previous_annotation else ""
+            )
+            return f"""{previous_section}
+Validation errors found:
 {errors_str}
 {suggestions_str}
 
-Please fix these errors and generate a corrected HED annotation for:
+Fix these errors and generate a corrected HED annotation for:
 {description}
 
-Remember to use only valid HED tags and follow proper grouping rules.
-{replacement_note}
-CRITICAL: Output ONLY the raw HED annotation string.
-Do NOT include:
-- Markdown headers (##, ###)
-- Code blocks (```)
-- Explanatory text like "Here is", "Corrected", "Refined"
-- Any other commentary
-
-Just output the HED string directly."""
+{replacement_note}CRITICAL: Output ONLY the raw HED annotation string."""
 
         return f"""Generate a HED annotation for this event description:
 {description}
 
-CRITICAL: Output ONLY the raw HED annotation string.
-Do NOT include:
-- Markdown headers (##, ###)
-- Code blocks (```)
-- Explanatory text
-- Any commentary
-
-Just output the HED string directly."""
+CRITICAL: Output ONLY the raw HED annotation string."""
 
     async def annotate(self, state: HedAnnotationState) -> dict:
         """Generate or refine a HED annotation.
@@ -199,10 +189,14 @@ Just output the HED string directly."""
         # Pass tag suggestions directly (survives feedback summarization)
         tag_suggestions = state.get("tag_suggestions", {})
 
+        # Include previous annotation for targeted corrections
+        previous_annotation = state.get("current_annotation") if feedbacks else None
+
         user_prompt = self._build_user_prompt(
             state["input_description"],
             feedbacks or None,
             tag_suggestions or None,
+            previous_annotation,
         )
 
         # Generate annotation
