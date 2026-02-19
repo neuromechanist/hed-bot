@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Source+Serif+4:wght@700&amp;display=swap');
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <!-- Subtle border -->
+  <rect x="4" y="4" width="1192" height="622" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="6" height="630" fill="#184A3D"/>
+
+  <!-- AGI Logo -->
+  <image href="file:///Users/yahya/Documents/git/osc/assets/AGI-square.png"
+         x="60" y="195" width="240" height="240"/>
+
+  <!-- Text content -->
+  <g transform="translate(360, 240)">
+    <text font-family="'Source Serif 4', Georgia, serif" font-size="56" font-weight="700" fill="#184A3D">
+      <tspan x="0" dy="0">HEDit</tspan>
+    </text>
+
+    <text font-family="'Inter', sans-serif" font-size="28" fill="#4B4967">
+      <tspan x="0" dy="64">HED Annotation Generation</tspan>
+    </text>
+
+    <!-- Divider line -->
+    <line x1="0" y1="126" x2="100" y2="126" stroke="#E99852" stroke-width="3"/>
+
+    <!-- Tagline -->
+    <text font-family="'Inter', sans-serif" font-size="22" fill="#6b7280">
+      <tspan x="0" dy="158">From plain English or images</tspan>
+      <tspan x="0" dy="30">to valid HED annotations, automatically</tspan>
+    </text>
+  </g>
+
+  <!-- Domain -->
+  <text x="1140" y="595" font-family="'Inter', sans-serif" font-size="20" fill="#9ca3af" text-anchor="end">hedit.pages.dev</text>
+</svg>
