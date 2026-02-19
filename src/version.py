@@ -1,6 +1,6 @@
 """Version information for HEDit."""
 
-__version__ = "0.7.4a1"
+__version__ = "0.7.4a2"
 __version_info__ = (0, 7, 4, "alpha")
 
 
