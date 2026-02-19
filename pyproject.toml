@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hedit"
-version = "0.6.8a4"
+version = "0.7.2.dev0"
 description = "Multi-agent system for HED annotation generation and validation"
 readme = "PKG_README.md"
 requires-python = ">=3.12"
@@ -48,6 +48,8 @@ Issues = "https://github.com/Annotation-Garden/hedit/issues"
 
 [project.optional-dependencies]
 # Standalone mode: run LangGraph workflow locally without backend (~2GB)
+# Note: hed-lsp CLI is recommended for semantic tag suggestions
+# Install separately: https://github.com/hed-standard/hed-lsp
 standalone = [
     "langgraph>=0.2.0",
     "langchain>=0.3.0",
@@ -123,11 +125,18 @@ addopts = [
 # Unit tests alone get ~18%, integration tests combined get 70%+
 markers = [
     "integration: marks tests that make real API calls (deselect with '-m \"not integration\"')",
+    "standalone: marks tests that run locally without backend (requires OPENROUTER_API_KEY_FOR_TESTING)",
     "timeout: marks tests with a timeout (requires pytest-timeout)",
 ]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
+# Enable branch coverage for more accurate metrics
+branch = true
+# Use data_file for combining multiple test runs
+data_file = ".coverage"
+# Parallel mode allows combining coverage from multiple processes
+parallel = true
 omit = [
     "src/utils/hed_rules.py",  # Just a string constant, no logic to test
 ]

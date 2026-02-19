@@ -70,7 +70,8 @@ class VisionAgent:
 
         # Generate description
         response = await self.llm.ainvoke([message])
-        description = response.content.strip()
+        content = response.content
+        description = content.strip() if isinstance(content, str) else str(content)
 
         return {
             "description": description,
@@ -114,7 +115,8 @@ class VisionAgent:
 
         # Generate description
         response = self.llm.invoke([message])
-        description = response.content.strip()
+        content = response.content
+        description = content.strip() if isinstance(content, str) else str(content)
 
         return {
             "description": description,

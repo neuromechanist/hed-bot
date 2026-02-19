@@ -56,62 +56,86 @@ class AnnotationAgent:
         self,
         vocabulary: list[str],
         extendable_tags: list[str],
+        semantic_hints: list[dict] | None = None,
+        no_extend: bool = False,
     ) -> str:
         """Build the system prompt for the annotation agent.
 
         Args:
             vocabulary: List of valid short-form HED tags
             extendable_tags: Tags that allow extension
+            semantic_hints: Optional semantic search results with relevant tags
+            no_extend: If True, prohibit tag extensions
 
         Returns:
             Complete system prompt with all HED rules
         """
-        return get_comprehensive_hed_guide(vocabulary, extendable_tags)
+        return get_comprehensive_hed_guide(vocabulary, extendable_tags, semantic_hints, no_extend)
+
+    def _format_tag_suggestions(self, tag_suggestions: dict[str, list[str]]) -> str:
+        """Format tag suggestions into a clear instruction block.
+
+        Args:
+            tag_suggestions: Mapping of invalid tags to suggested valid alternatives
+
+        Returns:
+            Formatted suggestion string
+        """
+        if not tag_suggestions:
+            return ""
+
+        lines = ["\nSuggested VALID HED tag replacements for invalid tags:"]
+        for invalid_tag, suggestions in tag_suggestions.items():
+            if suggestions:
+                lines.append(f"  Instead of '{invalid_tag}', use: {', '.join(suggestions[:3])}")
+            else:
+                lines.append(
+                    f"  '{invalid_tag}' has no direct match; check the HED schema vocabulary"
+                )
+        return "\n".join(lines)
 
     def _build_user_prompt(
         self,
         description: str,
         validation_errors: list[str] | None = None,
+        tag_suggestions: dict[str, list[str]] | None = None,
+        previous_annotation: str | None = None,
     ) -> str:
         """Build the user prompt for annotation.
 
         Args:
             description: Natural language event description
             validation_errors: Previous validation errors (if retrying)
+            tag_suggestions: LSP-suggested valid tags for invalid tags
+            previous_annotation: The previous annotation attempt (for targeted correction)
 
         Returns:
             User prompt string
         """
         if validation_errors:
             errors_str = "\n".join(f"- {error}" for error in validation_errors)
-            return f"""Previous annotation had validation errors:
+            suggestions_str = self._format_tag_suggestions(tag_suggestions or {})
+            replacement_note = (
+                "IMPORTANT: Replace invalid tags with the suggested alternatives above.\n"
+                if suggestions_str
+                else ""
+            )
+            previous_section = (
+                f"Previous annotation:\n{previous_annotation}\n\n" if previous_annotation else ""
+            )
+            return f"""{previous_section}Validation errors found:
 {errors_str}
+{suggestions_str}
 
-Please fix these errors and generate a corrected HED annotation for:
+Fix these errors and generate a corrected HED annotation for:
 {description}
 
-Remember to use only valid HED tags and follow proper grouping rules.
-
-CRITICAL: Output ONLY the raw HED annotation string.
-Do NOT include:
-- Markdown headers (##, ###)
-- Code blocks (```)
-- Explanatory text like "Here is", "Corrected", "Refined"
-- Any other commentary
-
-Just output the HED string directly."""
+{replacement_note}CRITICAL: Output ONLY the raw HED annotation string."""
 
         return f"""Generate a HED annotation for this event description:
 {description}
 
-CRITICAL: Output ONLY the raw HED annotation string.
-Do NOT include:
-- Markdown headers (##, ###)
-- Code blocks (```)
-- Explanatory text
-- Any commentary
-
-Just output the HED string directly."""
+CRITICAL: Output ONLY the raw HED annotation string."""
 
     async def annotate(self, state: HedAnnotationState) -> dict:
         """Generate or refine a HED annotation.
@@ -142,8 +166,15 @@ Just output the HED string directly."""
             # Use empty list - LLM will still generate valid annotations
             extendable_tags = []
 
-        # Build prompts with complete HED rules
-        system_prompt = self._build_system_prompt(vocabulary, extendable_tags)
+        # Build prompts with complete HED rules (including semantic hints if available)
+        semantic_hints = state.get("semantic_hints", [])
+        no_extend = state.get("no_extend", False)
+        system_prompt = self._build_system_prompt(
+            vocabulary,
+            extendable_tags,
+            semantic_hints if semantic_hints else None,
+            no_extend,
+        )
 
         # Build user prompt with any feedback (use augmented errors with remediation for LLM)
         feedbacks = []
@@ -154,9 +185,17 @@ Just output the HED string directly."""
         if state.get("assessment_feedback") and not state.get("is_complete"):
             feedbacks.append(f"Assessment feedback: {state['assessment_feedback']}")
 
+        # Pass tag suggestions directly (survives feedback summarization)
+        tag_suggestions = state.get("tag_suggestions", {})
+
+        # Include previous annotation for targeted corrections
+        previous_annotation = state.get("current_annotation") if feedbacks else None
+
         user_prompt = self._build_user_prompt(
             state["input_description"],
-            feedbacks if feedbacks else None,
+            feedbacks or None,
+            tag_suggestions or None,
+            previous_annotation,
         )
 
         # Generate annotation
@@ -166,7 +205,8 @@ Just output the HED string directly."""
         ]
 
         response = await self.llm.ainvoke(messages)
-        raw_annotation = response.content.strip()
+        content = response.content
+        raw_annotation = content.strip() if isinstance(content, str) else str(content)
 
         # Clean up LLM output - extract just the HED annotation
         annotation = self._extract_hed_annotation(raw_annotation)
