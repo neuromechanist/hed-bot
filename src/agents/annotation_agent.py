@@ -14,7 +14,6 @@ from src.agents.state import HedAnnotationState
 from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
 from src.utils.json_schema_loader import HedJsonSchemaLoader, load_latest_schema
 
-
 logger = logging.getLogger(__name__)
 
 
