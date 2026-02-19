@@ -316,3 +316,118 @@ class TestValidationAgentTagSuggestions:
 
         # Without LSP, tag_suggestions is always empty regardless of validity
         assert result["tag_suggestions"] == {}
+
+
+class TestDetectExtensionsViaRegex:
+    """Tests for _detect_extensions_via_regex with real HED schema."""
+
+    @pytest.fixture
+    def validation_agent(self):
+        loader = HedSchemaLoader()
+        return ValidationAgent(loader, use_javascript=False)
+
+    @pytest.fixture
+    def hed_schema(self):
+        from hed.schema import load_schema_version
+
+        return load_schema_version("8.4.0")
+
+    def test_detects_known_extensible_tag(self, validation_agent, hed_schema):
+        """Should detect Animal/Marmoset as an extension of the extensible Animal tag."""
+        extended = validation_agent._detect_extensions_via_regex(
+            "Animal/Marmoset, Sensory-event", hed_schema
+        )
+        assert "Animal/Marmoset" in extended
+
+    def test_no_detection_for_value_tags(self, validation_agent, hed_schema):
+        """Should not falsely flag lowercase-starting or value-only patterns."""
+        extended = validation_agent._detect_extensions_via_regex(
+            "Sensory-event, Red, Circle", hed_schema
+        )
+        assert len(extended) == 0
+
+
+class TestExtractProblematicTagsHashPlaceholder:
+    """Tests for _extract_problematic_tags handling # placeholder in tag names."""
+
+    @pytest.fixture
+    def validation_agent(self):
+        loader = HedSchemaLoader()
+        return ValidationAgent(loader, use_javascript=False)
+
+    def test_strips_hash_from_tag_name(self, validation_agent):
+        """Tag names like 'Duration/#' should have the # stripped, leaving 'Duration'."""
+        from src.validation.hed_validator import ValidationIssue, ValidationResult
+
+        result = ValidationResult(
+            is_valid=False,
+            errors=[
+                ValidationIssue(
+                    code="TAG_INVALID",
+                    level="error",
+                    message="Invalid tag",
+                    tag="Duration/#",
+                )
+            ],
+            warnings=[],
+        )
+        tags = validation_agent._extract_problematic_tags(result.errors, result.warnings)
+        assert "Duration" in tags
+        assert "#" not in "".join(tags)
+
+    def test_ignores_tag_errors_without_tag_field(self, validation_agent):
+        """Errors without a tag field should not contribute to problematic tags."""
+        from src.validation.hed_validator import ValidationIssue, ValidationResult
+
+        result = ValidationResult(
+            is_valid=False,
+            errors=[
+                ValidationIssue(
+                    code="TAG_INVALID",
+                    level="error",
+                    message="Invalid tag",
+                    tag=None,
+                )
+            ],
+            warnings=[],
+        )
+        tags = validation_agent._extract_problematic_tags(result.errors, result.warnings)
+        assert len(tags) == 0
+
+
+class TestGetOrCreateValidatorSchemaVersionWarning:
+    """Tests for schema version mismatch warning in _get_or_create_validator."""
+
+    @pytest.fixture
+    def validation_agent(self):
+        loader = HedSchemaLoader()
+        return ValidationAgent(loader, use_javascript=False)
+
+    def test_warns_on_schema_version_mismatch(self, validation_agent, caplog):
+        """Should log a warning when validator is reused with a different schema version."""
+        import logging
+
+        # First call creates and caches the validator for 8.4.0
+        validation_agent._get_or_create_validator("8.4.0")
+
+        # Second call with a different version should warn
+        with caplog.at_level(logging.WARNING, logger="src.agents.validation_agent"):
+            validation_agent._get_or_create_validator("8.3.0")
+
+        assert any(
+            "8.4.0" in record.message and "8.3.0" in record.message
+            for record in caplog.records
+        )
+
+    def test_no_warning_on_same_schema_version(self, validation_agent, caplog):
+        """Should not warn when reusing validator for same schema version."""
+        import logging
+
+        validation_agent._get_or_create_validator("8.4.0")
+
+        with caplog.at_level(logging.WARNING, logger="src.agents.validation_agent"):
+            validation_agent._get_or_create_validator("8.4.0")
+
+        assert not any(
+            "reusing cached" in record.message for record in caplog.records
+        )

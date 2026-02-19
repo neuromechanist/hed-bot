@@ -124,10 +124,11 @@ class ValidationAgent:
             # Check if this is a tag-related error
             if issue.code in self.TAG_ERROR_CODES:
                 if issue.tag:
-                    # Extract just the tag name (last part of path)
-                    tag_name = issue.tag.split("/")[-1] if "/" in issue.tag else issue.tag
-                    # Clean up the tag name (remove value placeholders like #)
-                    tag_name = tag_name.split("#")[0].strip()
+                    # Strip value placeholders (e.g. "Duration/#" -> "Duration")
+                    # before extracting the last meaningful path segment
+                    clean_tag = re.sub(r"/#[^/]*$", "", issue.tag).rstrip("/")
+                    tag_name = clean_tag.split("/")[-1] if "/" in clean_tag else clean_tag
+                    tag_name = tag_name.strip()
                     if tag_name and tag_name not in problematic_tags:
                         problematic_tags.append(tag_name)
 

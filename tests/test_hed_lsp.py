@@ -280,3 +280,97 @@ class TestSuggestTagsForKeywords:
             result = suggest_tags_for_keywords(["button", "press"])
             assert "button" in result
             assert "press" in result
+
+
+class TestSuggestForDescription:
+    """Tests for suggest_for_description method."""
+
+    def _make_mock_run(self, stdout='["Event"]'):
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = stdout
+        mock_result.stderr = ""
+        return mock_result
+
+    def test_basic_mode_excludes_semantic_flag(self):
+        """mode='basic' should not include --semantic even when use_semantic=True."""
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=self._make_mock_run()) as mock_run,
+        ):
+            client = HedLspClient(use_semantic=True)
+            client.suggest_for_description("button press", mode="basic")
+            cmd = mock_run.call_args[0][0]
+            assert "--semantic" not in cmd
+
+    def test_semantic_mode_includes_semantic_flag(self):
+        """mode='semantic' should include --semantic even when use_semantic=False."""
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=self._make_mock_run()) as mock_run,
+        ):
+            client = HedLspClient(use_semantic=False)
+            client.suggest_for_description("button press", mode="semantic")
+            cmd = mock_run.call_args[0][0]
+            assert "--semantic" in cmd
+
+    def test_none_mode_uses_instance_default(self):
+        """mode=None should use the instance's use_semantic setting."""
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=self._make_mock_run()) as mock_run,
+        ):
+            client = HedLspClient(use_semantic=True)
+            client.suggest_for_description("button press")
+            cmd = mock_run.call_args[0][0]
+            assert "--semantic" in cmd
+
+    def test_does_not_mutate_use_semantic(self):
+        """suggest_for_description must not mutate self.use_semantic (thread-safety)."""
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=self._make_mock_run()),
+        ):
+            client = HedLspClient(use_semantic=False)
+            client.suggest_for_description("button press", mode="semantic")
+            assert client.use_semantic is False  # unchanged
+
+
+class TestSuggestEmptyTagFiltering:
+    """Tests for empty-tag filtering in suggest()."""
+
+    def test_filters_empty_string_tags(self):
+        """Suggestions with empty tag strings should be filtered out."""
+        mock_output = '[{"tag": "", "score": 0.5}, {"tag": "Event", "score": 0.9}]'
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = mock_output
+        mock_result.stderr = ""
+
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=mock_result),
+        ):
+            client = HedLspClient()
+            result = client.suggest("test")
+
+            assert result.success is True
+            assert len(result.suggestions) == 1
+            assert result.suggestions[0].tag == "Event"
+
+    def test_json_decode_error_returns_failure(self):
+        """Invalid JSON from CLI should return failure result with JSON in error message."""
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "not valid json {"
+        mock_result.stderr = ""
+
+        with (
+            patch("src.validation.hed_lsp.is_hed_lsp_available", return_value=True),
+            patch("subprocess.run", return_value=mock_result),
+        ):
+            client = HedLspClient()
+            result = client.suggest("test")
+
+            assert result.success is False
+            assert "JSON" in result.error
