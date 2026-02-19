@@ -137,7 +137,7 @@ def decode_base64_image(base64_str: str, validate: bool = True) -> tuple[Image.I
         "height": image.height,
         "size_bytes": size_bytes,
         "size_mb": size_bytes / (1024 * 1024),
-        "mime_type": mime_type or f"image/{image.format.lower()}",
+        "mime_type": mime_type or f"image/{(image.format or 'png').lower()}",
     }
 
     return image, metadata

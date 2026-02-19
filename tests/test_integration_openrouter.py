@@ -186,10 +186,13 @@ class TestEvaluationAgentIntegration:
 
 
 @pytest.mark.integration
+@pytest.mark.standalone
 @pytest.mark.skipif(not OPENROUTER_TEST_KEY, reason=SKIP_REASON)
 class TestWorkflowIntegration:
     """Test the complete annotation workflow with real LLM calls.
 
+    Marked standalone because it runs the full LangGraph workflow locally
+    without a backend server, which is exactly the standalone use case.
     Note: This test makes multiple LLM calls and may take longer.
     """
 

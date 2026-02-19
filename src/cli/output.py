@@ -5,6 +5,7 @@ Uses Rich for beautiful terminal output with colors, tables, and panels.
 
 import json
 import sys
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -287,7 +288,7 @@ def print_progress(message: str) -> None:
 
 
 @contextmanager
-def streaming_status(initial_message: str = "Connecting..."):
+def streaming_status(initial_message: str = "Connecting...") -> Generator[Status, None, None]:
     """Context manager for streaming status updates.
 
     Yields a Status object that can be updated with new messages.

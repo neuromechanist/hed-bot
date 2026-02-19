@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import BaseModel, Field
 
 # Cross-platform config directory
@@ -41,9 +41,9 @@ DEFAULT_DEV_API_URL = "https://api.annotation.garden/hedit-dev"
 DEFAULT_MODEL = "anthropic/claude-haiku-4.5"
 DEFAULT_PROVIDER = "anthropic"
 
-# Evaluation model: Qwen3-235B for consistent quality assessment
+# Evaluation model: Qwen3-235B (auto-routed by OpenRouter)
 DEFAULT_EVAL_MODEL = "qwen/qwen3-235b-a22b-2507"
-DEFAULT_EVAL_PROVIDER = "Cerebras"
+DEFAULT_EVAL_PROVIDER = None
 
 # Vision model: Qwen3-VL for image descriptions
 DEFAULT_VISION_MODEL = "qwen/qwen3-vl-30b-a3b-instruct"
@@ -69,7 +69,7 @@ class ModelsConfig(BaseModel):
     )
     eval_provider: str | None = Field(
         default=DEFAULT_EVAL_PROVIDER,
-        description="Provider for evaluation model (Cerebras for qwen)",
+        description="Provider for evaluation model (None = OpenRouter auto-routes)",
     )
     vision: str = Field(default=DEFAULT_VISION_MODEL, description="Vision model for images")
     vision_provider: str | None = Field(
@@ -250,7 +250,7 @@ def get_effective_config(
 
     Note:
         When a custom model is specified without an explicit provider, the provider
-        is cleared. This is because the default provider (Cerebras) only supports
+        is cleared. This is because a pinned provider may only support
         specific models.
     """
     config = load_config()
@@ -262,7 +262,7 @@ def get_effective_config(
 
     # Handle model/provider interaction:
     # If user specifies a model different from default but doesn't specify provider,
-    # clear the provider (since Cerebras only supports specific models)
+    # clear the provider (a pinned provider may not support the custom model)
     if model:
         config.models.default = model
         # Clear provider if model changed and provider not explicitly set

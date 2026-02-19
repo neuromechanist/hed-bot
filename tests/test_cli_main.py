@@ -52,6 +52,13 @@ class TestHelp:
         assert "--api-key" in result.output
         assert "--schema" in result.output
         assert "--output" in result.output
+        assert "--no-extend" in result.output
+
+    def test_annotate_image_help(self):
+        """Test annotate-image command help shows --no-extend."""
+        result = runner.invoke(app, ["annotate-image", "--help"])
+        assert result.exit_code == 0
+        assert "--no-extend" in result.output
 
     def test_config_help(self):
         """Test config subcommand help."""
@@ -134,6 +141,38 @@ class TestAnnotateCommand:
             assert result.exit_code == 0
             assert '"annotation"' in result.output
             assert '"is_valid"' in result.output
+
+    def test_annotate_with_no_extend_flag(self, tmp_path):
+        """Test annotate with --no-extend flag is accepted."""
+        mock_response = {
+            "annotation": "Test-annotation",
+            "is_valid": True,
+            "is_faithful": True,
+            "is_complete": False,
+            "validation_attempts": 1,
+            "validation_errors": [],
+            "validation_warnings": [],
+            "status": "success",
+        }
+
+        with (
+            patch("src.cli.config.CONFIG_DIR", tmp_path),
+            patch("src.cli.config.CONFIG_FILE", tmp_path / "config.yaml"),
+            patch("src.cli.config.CREDENTIALS_FILE", tmp_path / "credentials.yaml"),
+            patch("src.cli.client.HEDitClient.annotate", return_value=mock_response),
+        ):
+            result = runner.invoke(
+                app,
+                [
+                    "annotate",
+                    "test description",
+                    "--api-key",
+                    "test-key",
+                    "--no-extend",
+                ],
+            )
+            assert result.exit_code == 0
+            assert "Test-annotation" in result.output
 
 
 class TestValidateCommand:

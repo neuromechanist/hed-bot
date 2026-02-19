@@ -33,7 +33,7 @@ class HedSchemaLoader:
 
     def load_schema(
         self,
-        schema_spec: str = "8.3.0",
+        schema_spec: str = "8.4.0",
         library_name: str | None = None,
     ) -> HedSchema:
         """Load a HED schema from version string or file path.

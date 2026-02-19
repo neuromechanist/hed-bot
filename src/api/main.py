@@ -4,8 +4,10 @@ This module provides REST API endpoints for HED annotation generation
 and validation using the multi-agent workflow.
 """
 
+import asyncio
 import hashlib
 import json
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -97,11 +99,11 @@ def create_openrouter_workflow(
         annotation_model: Model for annotation (default: ANNOTATION_MODEL env or Claude Haiku 4.5)
         annotation_provider: Provider for annotation model (default: ANNOTATION_PROVIDER env or "anthropic")
         eval_model: Model for eval/assessment/feedback (default: EVALUATION_MODEL env or Qwen3-235B)
-        eval_provider: Provider for eval models (default: EVALUATION_PROVIDER env or "Cerebras")
+        eval_provider: Provider for eval models (default: EVALUATION_PROVIDER env or auto-routed)
         temperature: LLM temperature (default: 0.1)
         user_id: User ID for cache optimization (derived from API key if not provided)
         schema_dir: Path to HED schemas (None = fetch from GitHub)
-        validator_path: Path to hed-javascript (None = use Python validator)
+        validator_path: Path to hed-javascript (None = use auto fallback chain)
         use_js_validator: Whether to use JavaScript validator
 
     Returns:
@@ -111,7 +113,7 @@ def create_openrouter_workflow(
     default_annotation_model = os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
     default_annotation_provider = os.getenv("ANNOTATION_PROVIDER", "anthropic")
     default_eval_model = os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
-    default_eval_provider = os.getenv("EVALUATION_PROVIDER", "Cerebras")
+    default_eval_provider = os.getenv("EVALUATION_PROVIDER", "")
 
     # Resolve final values: parameter > env var > default
     actual_annotation_model = get_model_name(annotation_model or default_annotation_model)
@@ -128,7 +130,7 @@ def create_openrouter_workflow(
     else:
         actual_annotation_provider = default_annotation_provider
 
-    actual_eval_provider = eval_provider or default_eval_provider
+    actual_eval_provider = eval_provider or default_eval_provider or None
 
     # Create LLMs
     annotation_llm = create_openrouter_llm(
@@ -162,6 +164,7 @@ def create_openrouter_workflow(
 
     # Create and return workflow
     # Only use JS validator if validator_path is available
+    # Note: Semantic search now uses hed-lsp CLI instead of keyword extraction LLM
     actual_use_js = use_js_validator and validator_path is not None
     return HedAnnotationWorkflow(
         llm=annotation_llm,
@@ -352,7 +355,7 @@ async def lifespan(app: FastAPI):
         print(f"  Annotation: {os.getenv('ANNOTATION_MODEL', 'anthropic/claude-haiku-4.5')}")
         print(f"  Evaluation: {os.getenv('EVALUATION_MODEL', 'qwen/qwen3-235b-a22b-2507')}")
         print(f"  Provider (annotation): {os.getenv('ANNOTATION_PROVIDER', 'anthropic')}")
-        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', 'Cerebras')}")
+        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', '') or '(auto-routed)'}")
 
         workflow = create_openrouter_workflow(
             api_key=openrouter_api_key,
@@ -1013,6 +1016,9 @@ async def annotate_stream(
         def send_event(event_type: str, data: dict) -> str:
             return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
+        # SSE padding comment to force Safari to open the stream
+        yield ": stream opened\n\n"
+
         try:
             # Send initial start event
             yield send_event(
@@ -1071,15 +1077,16 @@ async def annotate_stream(
                                     },
                                 )
                             elif errors:
-                                yield send_event(
-                                    "validation",
-                                    {
-                                        "valid": False,
-                                        "attempt": validation_attempt,
-                                        "errors": errors[:3],  # Send first 3 errors
-                                        "message": f"Found {len(errors)} validation error(s)",
-                                    },
-                                )
+                                tag_suggestions = output.get("tag_suggestions", {})
+                                validation_data = {
+                                    "valid": False,
+                                    "attempt": validation_attempt,
+                                    "errors": errors[:3],  # Send first 3 errors
+                                    "message": f"Found {len(errors)} validation error(s)",
+                                }
+                                if tag_suggestions:
+                                    validation_data["tag_suggestions"] = tag_suggestions
+                                yield send_event("validation", validation_data)
 
             # Send final result
             is_valid = (
@@ -1095,6 +1102,7 @@ async def annotate_stream(
                 "validation_attempts": current_state.get("validation_attempts", 0),
                 "validation_errors": current_state.get("validation_errors", []),
                 "validation_warnings": current_state.get("validation_warnings", []),
+                "tag_suggestions": current_state.get("tag_suggestions", {}),
                 "evaluation_feedback": current_state.get("evaluation_feedback", ""),
                 "assessment_feedback": current_state.get("assessment_feedback", ""),
                 "status": status,
@@ -1103,12 +1111,13 @@ async def annotate_stream(
             yield send_event("result", result)
             yield send_event("done", {"message": "Workflow completed"})
 
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # Log the actual error for debugging, but return a generic message
-            import logging
-
             logging.exception("Streaming workflow error")
             yield send_event("error", {"message": "An error occurred during annotation processing"})
+            yield send_event("done", {"message": "Workflow ended with error"})
 
     return StreamingResponse(
         event_generator(),
@@ -1117,6 +1126,7 @@ async def annotate_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Content-Type-Options": "nosniff",  # Prevent MIME-type sniffing; helps Safari trust text/event-stream
         },
     )
 
@@ -1248,6 +1258,9 @@ async def annotate_from_image_stream(
         def send_event(event_type: str, data: dict) -> str:
             return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
+        # SSE padding comment to force Safari to open the stream
+        yield ": stream opened\n\n"
+
         try:
             # Send initial start event
             yield send_event(
@@ -1334,15 +1347,16 @@ async def annotate_from_image_stream(
                                     },
                                 )
                             elif errors:
-                                yield send_event(
-                                    "validation",
-                                    {
-                                        "valid": False,
-                                        "attempt": validation_attempt,
-                                        "errors": errors[:3],  # Send first 3 errors
-                                        "message": f"Found {len(errors)} validation error(s)",
-                                    },
-                                )
+                                tag_suggestions = output.get("tag_suggestions", {})
+                                validation_data = {
+                                    "valid": False,
+                                    "attempt": validation_attempt,
+                                    "errors": errors[:3],  # Send first 3 errors
+                                    "message": f"Found {len(errors)} validation error(s)",
+                                }
+                                if tag_suggestions:
+                                    validation_data["tag_suggestions"] = tag_suggestions
+                                yield send_event("validation", validation_data)
 
             # Send final result
             is_valid = (
@@ -1359,6 +1373,7 @@ async def annotate_from_image_stream(
                 "validation_attempts": current_state.get("validation_attempts", 0),
                 "validation_errors": current_state.get("validation_errors", []),
                 "validation_warnings": current_state.get("validation_warnings", []),
+                "tag_suggestions": current_state.get("tag_suggestions", {}),
                 "evaluation_feedback": current_state.get("evaluation_feedback", ""),
                 "assessment_feedback": current_state.get("assessment_feedback", ""),
                 "status": status,
@@ -1368,12 +1383,13 @@ async def annotate_from_image_stream(
             yield send_event("result", result)
             yield send_event("done", {"message": "Workflow completed"})
 
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # Log the actual error for debugging, but return a generic message
-            import logging
-
             logging.exception("Streaming image annotation workflow error")
             yield send_event("error", {"message": "An error occurred during image annotation"})
+            yield send_event("done", {"message": "Workflow ended with error"})
 
     return StreamingResponse(
         event_generator(),
@@ -1382,6 +1398,7 @@ async def annotate_from_image_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Content-Type-Options": "nosniff",  # Prevent MIME-type sniffing; helps Safari trust text/event-stream
         },
     )
 
@@ -1520,7 +1537,7 @@ async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
 
                 # Create LLM for triage
                 model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
-                provider = os.getenv("LLM_PROVIDER_PREFERENCE", "Cerebras")
+                provider = os.getenv("LLM_PROVIDER_PREFERENCE", "")
                 llm = create_openrouter_llm(
                     model=model,
                     api_key=openrouter_key,
