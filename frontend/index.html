@@ -1683,6 +1683,8 @@ Example: A red circle appears on the left side of the screen and the participant
                 case 'done':
                     // Streaming complete
                     break;
+                default:
+                    console.warn('[HEDit] Unknown SSE event:', eventType, data);
             }
         }
 
@@ -1926,6 +1928,8 @@ Example: A red circle appears on the left side of the screen and the participant
                 case 'done':
                     // Streaming complete
                     break;
+                default:
+                    console.warn('[HEDit] Unknown SSE event:', eventType, data);
             }
         }
 
