@@ -4,8 +4,10 @@ This module provides REST API endpoints for HED annotation generation
 and validation using the multi-agent workflow.
 """
 
+import asyncio
 import hashlib
 import json
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -1109,12 +1111,13 @@ async def annotate_stream(
             yield send_event("result", result)
             yield send_event("done", {"message": "Workflow completed"})
 
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # Log the actual error for debugging, but return a generic message
-            import logging
-
             logging.exception("Streaming workflow error")
             yield send_event("error", {"message": "An error occurred during annotation processing"})
+            yield send_event("done", {"message": "Workflow ended with error"})
 
     return StreamingResponse(
         event_generator(),
@@ -1380,12 +1383,13 @@ async def annotate_from_image_stream(
             yield send_event("result", result)
             yield send_event("done", {"message": "Workflow completed"})
 
+        except asyncio.CancelledError:
+            raise
         except Exception:
             # Log the actual error for debugging, but return a generic message
-            import logging
-
             logging.exception("Streaming image annotation workflow error")
             yield send_event("error", {"message": "An error occurred during image annotation"})
+            yield send_event("done", {"message": "Workflow ended with error"})
 
     return StreamingResponse(
         event_generator(),

@@ -4,6 +4,7 @@ This agent is responsible for converting natural language event descriptions
 into HED annotation strings, using vocabulary constraints and best practices.
 """
 
+import logging
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
@@ -12,6 +13,9 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from src.agents.state import HedAnnotationState
 from src.utils.hed_comprehensive_guide import get_comprehensive_hed_guide
 from src.utils.json_schema_loader import HedJsonSchemaLoader, load_latest_schema
+
+
+logger = logging.getLogger(__name__)
 
 
 class AnnotationAgent:
@@ -204,7 +208,11 @@ CRITICAL: Output ONLY the raw HED annotation string."""
             HumanMessage(content=user_prompt),
         ]
 
-        response = await self.llm.ainvoke(messages)
+        try:
+            response = await self.llm.ainvoke(messages)
+        except Exception as e:
+            logger.error("LLM invocation failed: %s", e, exc_info=True)
+            raise
         content = response.content
         raw_annotation = content.strip() if isinstance(content, str) else str(content)
 

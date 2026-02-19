@@ -201,7 +201,7 @@ class HedAnnotationWorkflow:
                 else:
                     logger.warning(f"[WORKFLOW] hed-lsp suggestion failed: {result.error}")
             except Exception as e:
-                logger.warning(f"[WORKFLOW] hed-lsp error: {e}")
+                logger.warning("[WORKFLOW] hed-lsp error: %s", e, exc_info=True)
 
         return {
             "extracted_keywords": keywords,
