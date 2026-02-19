@@ -100,8 +100,8 @@ class CachingLLMWrapper(BaseChatModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    def __init__(self, llm: BaseChatModel, **kwargs) -> None:  # type: ignore[no-untyped-def]
-        super().__init__(llm=llm, **kwargs)  # type: ignore[call-arg]
+    def __init__(self, llm: BaseChatModel, **kwargs):
+        super().__init__(llm=llm, **kwargs)
 
     @property
     def _llm_type(self) -> str:
@@ -144,30 +144,22 @@ class CachingLLMWrapper(BaseChatModel):
 
         return result
 
-    def _generate(  # type: ignore[override]
-        self, messages: list[BaseMessage], **kwargs: Any
-    ) -> Any:
+    def _generate(self, messages: list[BaseMessage], **kwargs) -> Any:
         """Generate response with cache_control on system messages."""
         cached_messages = self._add_cache_control(messages)
-        return self.llm._generate(cached_messages, **kwargs)  # type: ignore[arg-type]
+        return self.llm._generate(cached_messages, **kwargs)
 
-    async def _agenerate(  # type: ignore[override]
-        self, messages: list[BaseMessage], **kwargs: Any
-    ) -> Any:
+    async def _agenerate(self, messages: list[BaseMessage], **kwargs) -> Any:
         """Async generate response with cache_control on system messages."""
         cached_messages = self._add_cache_control(messages)
-        return await self.llm._agenerate(cached_messages, **kwargs)  # type: ignore[arg-type]
+        return await self.llm._agenerate(cached_messages, **kwargs)
 
-    def invoke(  # type: ignore[override]
-        self, messages: list[BaseMessage], **kwargs: Any
-    ) -> Any:
+    def invoke(self, messages: list[BaseMessage], **kwargs) -> Any:
         """Invoke LLM with cache_control on system messages."""
         cached_messages = self._add_cache_control(messages)
         return self.llm.invoke(cached_messages, **kwargs)
 
-    async def ainvoke(  # type: ignore[override]
-        self, messages: list[BaseMessage], **kwargs: Any
-    ) -> Any:
+    async def ainvoke(self, messages: list[BaseMessage], **kwargs) -> Any:
         """Async invoke LLM with cache_control on system messages."""
         cached_messages = self._add_cache_control(messages)
         return await self.llm.ainvoke(cached_messages, **kwargs)

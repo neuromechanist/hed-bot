@@ -113,8 +113,7 @@ Be direct and actionable."""
         ]
 
         response = await self.llm.ainvoke(messages)
-        content = response.content
-        summarized_feedback = content.strip() if isinstance(content, str) else str(content)
+        summarized_feedback = response.content.strip()
 
         # Replace verbose feedback with summary (only augmented fields for LLM, not raw for users)
         return {

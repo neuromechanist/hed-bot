@@ -330,14 +330,14 @@ Patterns:
 
             if "examples" in guidance_data:
                 examples = guidance_data["examples"]
-                if examples.get("wrong"):  # type: ignore[attr-defined]
+                if examples.get("wrong"):
                     parts.append("")
                     parts.append("   ❌ WRONG:")
-                    for ex in examples["wrong"][:3]:  # type: ignore[index]
+                    for ex in examples["wrong"][:3]:
                         parts.append(f"      {ex}")
-                if examples.get("correct"):  # type: ignore[attr-defined]
+                if examples.get("correct"):
                     parts.append("   ✓ CORRECT:")
-                    for ex in examples["correct"][:3]:  # type: ignore[index]
+                    for ex in examples["correct"][:3]:
                         parts.append(f"      {ex}")
 
             return "\n".join(parts)

@@ -3,156 +3,26 @@
 This module contains a complete guide to HED annotation creation,
 consolidated from multiple HED resources and documentation including
 HedAnnotationSemantics.md for proper semantic annotation rules.
-
-The guide is composed from modular builder functions, each responsible
-for a logical section. The top-level get_comprehensive_hed_guide()
-assembles them into the full system prompt.
 """
 
 
-def _format_semantic_hints(hints: list[dict]) -> str:
-    """Format semantic hints for inclusion in the guide.
+def get_comprehensive_hed_guide(vocabulary_sample: list[str], extendable_tags: list[str]) -> str:
+    """Generate comprehensive HED annotation guide.
 
     Args:
-        hints: List of semantic search results, each with:
-              - tag: HED tag name
-              - score: Relevance score (0-1)
-              - source: "keyword", "embedding", or "both"
-              - prefix: Optional library prefix (e.g., "sc:")
+        vocabulary_sample: Full list of valid HED tags (complete vocabulary)
+        extendable_tags: Tags that allow extension
 
     Returns:
-        Formatted hints section for the guide
+        Complete HED annotation guide
     """
-    if not hints:
-        return ""
+    # Provide FULL vocabulary (not just first 100)
+    vocab_str = ", ".join(vocabulary_sample)
+    extend_str = ", ".join(extendable_tags)
 
-    # Categorize by confidence level
-    high_conf = []  # score >= 0.8
-    medium_conf = []  # 0.5 <= score < 0.8
-    low_conf = []  # score < 0.5
+    return f"""# HED ANNOTATION GUIDE
 
-    for hint in hints:
-        tag = hint.get("tag", "")
-        prefix = hint.get("prefix", "")
-        score = hint.get("score", 0)
-        full_tag = f"{prefix}{tag}" if prefix else tag
-
-        if score >= 0.8:
-            high_conf.append(full_tag)
-        elif score >= 0.5:
-            medium_conf.append(full_tag)
-        else:
-            low_conf.append(full_tag)
-
-    lines = [
-        "## POTENTIALLY RELEVANT TAGS",
-        "",
-        "Based on your description, these schema tags may be relevant.",
-        "Note: this list may contain false positives - use your judgment.",
-        "",
-    ]
-
-    if high_conf:
-        lines.append(f"**High confidence**: {', '.join(high_conf)}")
-    if medium_conf:
-        lines.append(f"**Medium confidence**: {', '.join(medium_conf)}")
-    if low_conf:
-        lines.append(f"**Lower confidence**: {', '.join(low_conf)}")
-
-    lines.append("")
-    lines.append("---")
-    lines.append("")
-
-    return "\n".join(lines)
-
-
-def _build_no_extend_warning() -> str:
-    """Build the no-extend warning section.
-
-    Returns:
-        Warning text for when extensions are prohibited
-    """
-    return """## EXTENSIONS STRICTLY PROHIBITED - USE ONLY EXISTING VOCABULARY
-
-**ABSOLUTE RULE**: You MUST NOT create any new tags. Only use tags that exist in the vocabulary below.
-
-THIS IS THE HIGHEST PRIORITY INSTRUCTION. IT OVERRIDES ALL EXAMPLES IN THIS GUIDE.
-
-### What is FORBIDDEN:
-- ANY tag with a slash (/) that creates a new concept (e.g., Animal/Marmoset, Animal/Dolphin, Vehicle/Rickshaw)
-- Extending ANY parent tag with a new child term
-- Creating new terms even if examples below suggest doing so
-
-### What you MUST do instead:
-- Use the MOST SIMILAR existing tag from vocabulary
-- Use Label/description for clarification when needed
-- Group with existing tags only
-
-### EXAMPLES - NO EXTENSIONS MODE:
-
-FORBIDDEN (extension): Animal/Marmoset, Animal/Dolphin, Building/Cottage
-ALLOWED (existing tags): Animal, Animal-agent, Mammal (if in vocab)
-
-FORBIDDEN: (Animal-agent, Animal/Marmoset)
-ALLOWED: (Animal-agent, Animal) or (Animal-agent, Mammal) or (Animal-agent, Label/marmoset)
-
-FORBIDDEN: Vehicle/Rickshaw
-ALLOWED: Vehicle or (Vehicle, Label/rickshaw)
-
-FORBIDDEN: Furniture/Armoire
-ALLOWED: Furniture or (Furniture, Label/armoire)
-
-The Label tag allows adding descriptive text without creating new schema tags.
-Pattern: (Existing-tag, Label/description)
-
-### Value tags with units ARE allowed:
-Duration/2 s, Frequency/440 Hz - These are VALUES not extensions.
-
-### Definitions ARE allowed (they don't create new schema tags):
-Definition/MyDef, Def/MyDef - These are annotation tools, not extensions.
-
-**REMINDER**: Ignore any examples below that show extensions like Animal/X or Building/Y.
-Use only existing vocabulary tags. When in doubt, use Label/description.
-
----
-
-"""
-
-
-def _build_correction_workflow_section() -> str:
-    """Build the correction workflow section for error-guided refinement.
-
-    Returns:
-        Correction workflow guidance text
-    """
-    return """## CORRECTION WORKFLOW
-
-When fixing validation errors, follow these steps:
-
-1. Read each error message carefully; it tells you exactly what is wrong and where.
-2. For TAG_INVALID: the tag does not exist in the schema. Check the vocabulary list below
-   and use the closest valid tag. If tag suggestions are provided, use those.
-3. For TAG_EXTENSION_INVALID: you extended a tag that already exists as a vocabulary entry.
-   Remove the parent prefix and use the tag directly (e.g., use "Press" not "Action/Press").
-4. For TAG_REQUIRES_CHILD: the tag needs a value or child (e.g., "Duration/2 s" not just "Duration").
-5. For PARENTHESES_MISMATCH: count opening and closing parentheses; each ( must have a matching ).
-6. For VALUE_INVALID or UNITS_INVALID: use the correct value format with proper units.
-7. If tag suggestions are provided, prefer those exact replacements over guessing.
-8. Fix ALL reported errors in a single pass. Do not introduce new errors while fixing existing ones.
-9. Preserve the semantic structure and meaning of the original annotation as much as possible.
-
----
-
-"""
-
-
-def _build_vocabulary_check_section() -> str:
-    """Build the critical vocabulary check section.
-
-    Returns:
-        Vocabulary check instructions
-    """
-    return """## CRITICAL RULE: CHECK VOCABULARY FIRST
+## CRITICAL RULE: CHECK VOCABULARY FIRST
 
 BEFORE using ANY tag with a slash (/), CHECK if it's in the vocabulary below!
 
@@ -168,16 +38,7 @@ IF YOU SEE TAG_EXTENSION_INVALID ERROR -> You extended a tag that exists in voca
 
 ---
 
-"""
-
-
-def _build_semantic_rules_section() -> str:
-    """Build the semantic grouping rules section.
-
-    Returns:
-        Semantic grouping rules text
-    """
-    return """## SEMANTIC GROUPING RULES
+## SEMANTIC GROUPING RULES
 
 A well-formed HED annotation can be translated back into coherent English.
 This reversibility principle is the fundamental validation test for HED semantics.
@@ -226,16 +87,7 @@ WRONG: (Triangle, Mouse-button) - Stimulus shape and response device unrelated
 
 ---
 
-"""
-
-
-def _build_relation_tags_section() -> str:
-    """Build the relation tags section.
-
-    Returns:
-        Relation tags reference text
-    """
-    return """## RELATION TAGS
+## RELATION TAGS
 
 Relation tags describe how entities relate to each other spatially, temporally, or logically.
 Always use the pattern: (Entity-A, (Relation-tag, Entity-B))
@@ -306,16 +158,7 @@ COMPLEX EXAMPLE:
 
 ---
 
-"""
-
-
-def _build_event_agent_section() -> str:
-    """Build the non-extendable event/agent subtree section.
-
-    Returns:
-        Event and agent extension rules text
-    """
-    return """## CRITICAL: EVENT AND AGENT SUBTREES CANNOT BE EXTENDED
+## CRITICAL: EVENT AND AGENT SUBTREES CANNOT BE EXTENDED
 
 The Event subtree (7 tags) and Agent subtree (6 tags) do NOT allow extension.
 Instead of extending, you must GROUP these tags with descriptive Items/Properties.
@@ -374,16 +217,7 @@ Software-agent:
 
 ---
 
-"""
-
-
-def _build_extension_rules_section() -> str:
-    """Build the extension rules section.
-
-    Returns:
-        Extension rules text
-    """
-    return """## EXTENSION RULES (for extendable tags)
+## EXTENSION RULES (for extendable tags)
 
 When you MUST extend (concept not in vocabulary AND parent allows extension),
 extend from the MOST SPECIFIC applicable parent tag.
@@ -413,16 +247,7 @@ extend from the MOST SPECIFIC applicable parent tag.
 
 ---
 
-"""
-
-
-def _build_definition_section() -> str:
-    """Build the definition system section.
-
-    Returns:
-        Definition system text
-    """
-    return """## DEFINITION SYSTEM
+## DEFINITION SYSTEM
 
 Definitions allow naming reusable annotation patterns for consistency and brevity.
 They are essential for Onset/Offset temporal scoping and for reducing repetition.
@@ -494,16 +319,7 @@ It shows the expanded content for debugging. Never write Def-expand manually.
 
 ---
 
-"""
-
-
-def _build_temporal_section() -> str:
-    """Build the temporal scoping section.
-
-    Returns:
-        Temporal scoping text
-    """
-    return """## TEMPORAL SCOPING (Onset/Offset/Duration/Inset)
+## TEMPORAL SCOPING (Onset/Offset/Duration/Inset)
 
 HED provides several ways to annotate the temporal extent of events.
 
@@ -573,25 +389,16 @@ MEANING: Target appears 1 second after event marker, displays for 2 seconds
 
 ---
 
-"""
-
-
-def _build_sidecar_section() -> str:
-    """Build the sidecar syntax section.
-
-    Returns:
-        Sidecar syntax text
-    """
-    return """## SIDECAR SYNTAX (events.json)
+## SIDECAR SYNTAX (events.json)
 
 ### Value Placeholders (#)
 For columns with varying values, use # as placeholder.
 The # indicates a value that will be substituted from the column.
 
-EXAMPLE: {"age": {"HED": "Age/# years"}}
+EXAMPLE: {{"age": {{"HED": "Age/# years"}}}}
 For age=25: assembles to "Age/25 years"
 
-EXAMPLE: {"response_time": {"HED": "Response-time/# ms"}}
+EXAMPLE: {{"response_time": {{"HED": "Response-time/# ms"}}}}
 For response_time=350: assembles to "Response-time/350 ms"
 
 ### Units with # Placeholders
@@ -611,19 +418,19 @@ RIGHT: Duration/# s, Frequency/# Hz
 Reference other columns to assemble grouped annotations.
 Curly braces control how annotations from multiple columns are assembled together.
 
-BASIC PATTERN: {column_name}
+BASIC PATTERN: {{column_name}}
 This inserts the HED annotation from that column at this position.
 
 EXAMPLE:
-{
-  "event_type": {
-    "HED": {
-      "visual": "Experimental-stimulus, Sensory-event, Visual-presentation, ({color}, {shape})"
-    }
-  },
-  "color": {"HED": {"red": "Red", "blue": "Blue"}},
-  "shape": {"HED": {"circle": "Circle", "square": "Square"}}
-}
+{{
+  "event_type": {{
+    "HED": {{
+      "visual": "Experimental-stimulus, Sensory-event, Visual-presentation, ({{color}}, {{shape}})"
+    }}
+  }},
+  "color": {{"HED": {{"red": "Red", "blue": "Blue"}}}},
+  "shape": {{"HED": {{"circle": "Circle", "square": "Square"}}}}
+}}
 
 For event_type=visual, color=red, shape=circle:
 ASSEMBLES TO: Experimental-stimulus, Sensory-event, Visual-presentation, (Red, Circle)
@@ -632,26 +439,26 @@ ASSEMBLES TO: Experimental-stimulus, Sensory-event, Visual-presentation, (Red, C
 
 PATTERN 1: Grouping properties together
 When properties should form a single group, put curly braces inside parentheses:
-HED: "({object_color}, {object_shape}, {object_size})"
+HED: "({{object_color}}, {{object_shape}}, {{object_size}})"
 
 PATTERN 2: Multiple independent groups
-HED: "({target_color}, {target_shape}), ({distractor_color}, {distractor_shape})"
+HED: "({{target_color}}, {{target_shape}}), ({{distractor_color}}, {{distractor_shape}})"
 
 PATTERN 3: Nested relationships
-HED: "(({agent_type}, {agent_name}), ({action}, ({object})))"
+HED: "(({{agent_type}}, {{agent_name}}), ({{action}}, ({{object}})))"
 
 ### Handling n/a Values in Assembly
 When a column value is "n/a" or empty, its annotation is omitted.
 
 EXAMPLE:
-{
-  "response": {
-    "HED": {
-      "button_press": "Participant-response, (Press, ({response_hand}, Mouse-button))"
-    }
-  },
-  "response_hand": {"HED": {"left": "Left", "right": "Right"}}
-}
+{{
+  "response": {{
+    "HED": {{
+      "button_press": "Participant-response, (Press, ({{response_hand}}, Mouse-button))"
+    }}
+  }},
+  "response_hand": {{"HED": {{"left": "Left", "right": "Right"}}}}
+}}
 
 For response=button_press, response_hand=left:
 ASSEMBLES TO: Participant-response, (Press, (Left, Mouse-button))
@@ -670,16 +477,7 @@ ASSEMBLES TO: Participant-response, (Press, (Mouse-button))
 
 ---
 
-"""
-
-
-def _build_event_classification_section() -> str:
-    """Build the event and task-event-role classification section.
-
-    Returns:
-        Event classification text
-    """
-    return """## EVENT AND TASK-EVENT-ROLE CLASSIFICATION
+## EVENT AND TASK-EVENT-ROLE CLASSIFICATION
 
 ### Event Types (from Event subtree)
 - Sensory-event: Something presented to senses
@@ -706,16 +504,7 @@ MEANING: An auditory tone that is the experimental stimulus
 
 ---
 
-"""
-
-
-def _build_tag_usage_section() -> str:
-    """Build the tag usage by category section.
-
-    Returns:
-        Tag usage by category text
-    """
-    return """## TAG USAGE BY CATEGORY
+## TAG USAGE BY CATEGORY
 
 ### ITEMS (objects, things)
 IN VOCABULARY -> Use as-is: Window, Plant, Circle, Square, Button, Triangle
@@ -755,16 +544,7 @@ RIGHT: (Human-agent, Experiment-participant), (Animal-agent, Animal/Marmoset), (
 
 ---
 
-"""
-
-
-def _build_common_patterns_section() -> str:
-    """Build the common patterns section.
-
-    Returns:
-        Common annotation patterns text
-    """
-    return """## COMMON PATTERNS
+## COMMON PATTERNS
 
 ### Visual stimulus
 Sensory-event, Experimental-stimulus, Visual-presentation, (Red, Circle)
@@ -792,20 +572,7 @@ Sensory-event, Visual-presentation, (Feedback, Positive), (Green, Circle)
 
 ---
 
-"""
-
-
-def _build_vocabulary_section(vocab_str: str, extend_str: str) -> str:
-    """Build the vocabulary lookup section.
-
-    Args:
-        vocab_str: Comma-separated valid HED tags
-        extend_str: Comma-separated extendable tags (or disabled message)
-
-    Returns:
-        Vocabulary section text
-    """
-    return f"""## VOCABULARY LOOKUP
+## VOCABULARY LOOKUP
 
 ALWAYS check this list before using any tag. Use tags EXACTLY as shown.
 
@@ -828,16 +595,7 @@ When extending, use the MOST SPECIFIC applicable parent.
 
 ---
 
-"""
-
-
-def _build_common_errors_section() -> str:
-    """Build the common errors and troubleshooting section.
-
-    Returns:
-        Error troubleshooting text
-    """
-    return """## COMMON ERRORS AND TROUBLESHOOTING
+## COMMON ERRORS AND TROUBLESHOOTING
 
 ### Error: TAG_EXTENSION_INVALID
 CAUSE: Extending a tag with a child that already exists in schema vocabulary.
@@ -948,78 +706,9 @@ Before submitting annotations:
 
 ---
 
-"""
-
-
-def _build_output_format_section() -> str:
-    """Build the output format instructions section.
-
-    Returns:
-        Output format instructions text
-    """
-    return """## OUTPUT FORMAT
+## OUTPUT FORMAT
 
 Output ONLY the HED annotation string.
-Do NOT include:
-- Markdown headers (##, ###)
-- Code blocks (```)
-- Explanatory text like "Here is", "Corrected", "Refined"
-- Commentary or reasoning
-- Line breaks within the annotation
-
-Just output the raw HED annotation string directly.
+NO explanations, NO markdown, NO code blocks, NO commentary.
+Just the raw HED annotation.
 """
-
-
-def get_comprehensive_hed_guide(
-    vocabulary_sample: list[str],
-    extendable_tags: list[str],
-    semantic_hints: list[dict] | None = None,
-    no_extend: bool = False,
-) -> str:
-    """Generate comprehensive HED annotation guide.
-
-    Assembles modular sections into a complete system prompt for the
-    annotation agent. The guide includes vocabulary constraints, semantic
-    rules, correction workflows, and output format instructions.
-
-    Args:
-        vocabulary_sample: Full list of valid HED tags (complete vocabulary)
-        extendable_tags: Tags that allow extension
-        semantic_hints: Optional list of semantically relevant tags from search
-                       Each dict has: tag, score, source, prefix (optional)
-        no_extend: If True, add strict instructions to prohibit tag extensions
-
-    Returns:
-        Complete HED annotation guide
-    """
-    vocab_str = ", ".join(vocabulary_sample)
-    extend_str = ", ".join(extendable_tags) if not no_extend else "(Extensions disabled)"
-
-    # Format optional sections
-    hints_section = _format_semantic_hints(semantic_hints) if semantic_hints else ""
-    no_extend_warning = _build_no_extend_warning() if no_extend else ""
-
-    # Assemble guide from modular sections
-    sections = [
-        "# HED ANNOTATION GUIDE\n",
-        no_extend_warning,
-        _build_vocabulary_check_section(),
-        _build_correction_workflow_section(),
-        hints_section,
-        _build_semantic_rules_section(),
-        _build_relation_tags_section(),
-        _build_event_agent_section(),
-        _build_extension_rules_section(),
-        _build_definition_section(),
-        _build_temporal_section(),
-        _build_sidecar_section(),
-        _build_event_classification_section(),
-        _build_tag_usage_section(),
-        _build_common_patterns_section(),
-        _build_vocabulary_section(vocab_str, extend_str),
-        _build_common_errors_section(),
-        _build_output_format_section(),
-    ]
-
-    return "".join(sections)

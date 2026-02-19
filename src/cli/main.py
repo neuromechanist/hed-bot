@@ -84,7 +84,7 @@ SchemaVersionOption = Annotated[
     typer.Option(
         "--schema",
         "-s",
-        help="HED schema version (default: 8.4.0)",
+        help="HED schema version (e.g., 8.3.0, 8.4.0)",
     ),
 ]
 
@@ -161,14 +161,6 @@ UserIdOption = Annotated[
         "--user-id",
         help="Custom user ID for cache optimization (default: auto-generated machine ID)",
         hidden=True,  # Not advertised, but available
-    ),
-]
-
-NoExtendOption = Annotated[
-    bool,
-    typer.Option(
-        "--no-extend",
-        help="Prohibit tag extensions (use only existing vocabulary, standalone mode only)",
     ),
 ]
 
@@ -424,7 +416,6 @@ def annotate(
             help="Disable streaming progress (use batch mode)",
         ),
     ] = False,
-    no_extend: NoExtendOption = False,
     standalone: StandaloneOption = False,
     api_mode: ApiModeOption = False,
     verbose: VerboseOption = False,
@@ -439,7 +430,6 @@ def annotate(
         hedit annotate "..." --model gpt-4o-mini --temperature 0.2
         hedit annotate "..." --standalone  # Run locally
         hedit annotate "..." --no-streaming  # Disable live progress
-        hedit annotate "..." --standalone --no-extend  # No tag extensions
     """
     # Show telemetry disclosure on first run
     if is_first_run():
@@ -520,7 +510,6 @@ def annotate(
                 schema_version=schema_version or config.settings.schema_version,
                 max_validation_attempts=max_attempts,
                 run_assessment=assessment,
-                no_extend=no_extend,
             )
             output.print_annotation_result(result, output_format, verbose)
 
@@ -578,7 +567,6 @@ def annotate_image(
             help="Disable streaming progress (use batch mode)",
         ),
     ] = False,
-    no_extend: NoExtendOption = False,
     standalone: StandaloneOption = False,
     api_mode: ApiModeOption = False,
     verbose: VerboseOption = False,
@@ -594,7 +582,6 @@ def annotate_image(
         hedit annotate-image screen.png -o json > result.json
         hedit annotate-image stimulus.png --standalone  # Run locally
         hedit annotate-image stimulus.png --no-streaming  # Disable live progress
-        hedit annotate-image stimulus.png --standalone --no-extend  # No tag extensions
     """
     # Show telemetry disclosure on first run
     if is_first_run():
@@ -684,7 +671,6 @@ def annotate_image(
                 schema_version=schema_version or config.settings.schema_version,
                 max_validation_attempts=max_attempts,
                 run_assessment=assessment,
-                no_extend=no_extend,
             )
             output.print_image_annotation_result(result, output_format, verbose)
 

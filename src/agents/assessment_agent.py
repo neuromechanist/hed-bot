@@ -105,8 +105,7 @@ Provide brief assessment in the specified format."""
         ]
 
         response = await self.llm.ainvoke(messages)
-        content = response.content
-        feedback = content.strip() if isinstance(content, str) else str(content)
+        feedback = response.content.strip()
 
         # Parse completion status from assessment feedback
         # Format is "COMPLETENESS: complete" and "STATUS: COMPLETE"

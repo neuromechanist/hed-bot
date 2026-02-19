@@ -10,7 +10,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.state import HedAnnotationState
-from src.utils.json_schema_loader import HedJsonSchemaLoader, load_latest_schema
+from src.utils.json_schema_loader import load_latest_schema
 
 
 class EvaluationAgent:
@@ -30,7 +30,7 @@ class EvaluationAgent:
         """
         self.llm = llm
         self.schema_dir = schema_dir
-        self.json_schema_loader: HedJsonSchemaLoader | None = None
+        self.json_schema_loader = None
 
     def _build_system_prompt(self) -> str:
         """Build the system prompt for evaluation.
@@ -164,8 +164,7 @@ Provide a thorough evaluation following the specified format."""
         ]
 
         response = await self.llm.ainvoke(messages)
-        content = response.content
-        feedback = content.strip() if isinstance(content, str) else str(content)
+        feedback = response.content.strip()
 
         # Parse decision with multiple fallbacks
         is_faithful = self._parse_decision(feedback)

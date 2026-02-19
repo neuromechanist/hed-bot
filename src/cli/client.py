@@ -108,7 +108,7 @@ class HEDitClient:
             APIError: If request failed
         """
         if response.status_code == 200:
-            return response.json()  # type: ignore[no-any-return]
+            return response.json()
 
         # Parse error detail
         try:
@@ -151,7 +151,7 @@ class HEDitClient:
     def annotate(
         self,
         description: str,
-        schema_version: str = "8.4.0",
+        schema_version: str = "8.3.0",
         max_validation_attempts: int = 5,
         run_assessment: bool = False,
     ) -> dict[str, Any]:
@@ -182,7 +182,7 @@ class HEDitClient:
     def annotate_stream(
         self,
         description: str,
-        schema_version: str = "8.4.0",
+        schema_version: str = "8.3.0",
         max_validation_attempts: int = 5,
         run_assessment: bool = False,
     ) -> Generator[tuple[str, dict[str, Any]], None, None]:
@@ -360,7 +360,7 @@ class HEDitClient:
     def validate(
         self,
         hed_string: str,
-        schema_version: str = "8.4.0",
+        schema_version: str = "8.3.0",
     ) -> dict[str, Any]:
         """Validate HED string.
 

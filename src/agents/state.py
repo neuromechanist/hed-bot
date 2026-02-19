@@ -67,38 +67,22 @@ class HedAnnotationState(TypedDict):
     schema_version: str
     run_assessment: bool  # Whether to run final assessment
 
-    # Semantic search hints (optional, for improved annotation)
-    extracted_keywords: list[str]  # Keywords extracted from input description
-    semantic_hints: list[dict]  # Relevant tags from semantic search [{tag, score, source}]
-
-    # LSP tag suggestions for invalid tags (survives feedback summarization)
-    tag_suggestions: dict[str, list[str]]  # {invalid_tag: [suggested_valid_tags]}
-
-    # Extension control
-    no_extend: bool  # If True, prohibit tag extensions (use only existing vocabulary)
-
 
 def create_initial_state(
     input_description: str,
-    schema_version: str = "8.4.0",
+    schema_version: str = "8.3.0",
     max_validation_attempts: int = 5,
     max_total_iterations: int = 10,
     run_assessment: bool = False,
-    extracted_keywords: list[str] | None = None,
-    semantic_hints: list[dict] | None = None,
-    no_extend: bool = False,
 ) -> HedAnnotationState:
     """Create an initial state for a new annotation workflow.
 
     Args:
         input_description: Natural language event description to annotate
-        schema_version: HED schema version to use (default: "8.4.0")
+        schema_version: HED schema version to use (default: "8.3.0")
         max_validation_attempts: Maximum validation retry attempts (default: 5)
         max_total_iterations: Maximum total iterations to prevent infinite loops (default: 10)
         run_assessment: Whether to run final assessment (default: False)
-        extracted_keywords: Pre-extracted keywords from description (optional)
-        semantic_hints: Pre-computed semantic search hints (optional)
-        no_extend: If True, prohibit tag extensions (default: False)
 
     Returns:
         Initial HedAnnotationState
@@ -123,8 +107,4 @@ def create_initial_state(
         max_total_iterations=max_total_iterations,
         schema_version=schema_version,
         run_assessment=run_assessment,
-        extracted_keywords=extracted_keywords or [],
-        semantic_hints=semantic_hints or [],
-        tag_suggestions={},
-        no_extend=no_extend,
     )

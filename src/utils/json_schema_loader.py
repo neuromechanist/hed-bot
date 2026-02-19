@@ -95,7 +95,7 @@ class HedJsonSchemaLoader:
         Returns:
             Schema version string
         """
-        return self.schema_data.get("version", "unknown")  # type: ignore[no-any-return]
+        return self.schema_data.get("version", "unknown")
 
     def find_closest_match(self, invalid_tag: str) -> list[str]:
         """Find closest vocabulary matches for an invalid tag.

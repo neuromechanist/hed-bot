@@ -23,7 +23,7 @@ class AnnotationRequest(BaseModel):
         examples=["A red circle appears on the left side of the screen"],
     )
     schema_version: str = Field(
-        default="8.4.0",
+        default="8.3.0",
         description="HED schema version",
         examples=["8.3.0", "8.4.0"],
     )
@@ -103,7 +103,7 @@ class ValidationRequest(BaseModel):
         min_length=1,
     )
     schema_version: str = Field(
-        default="8.4.0",
+        default="8.3.0",
         description="HED schema version",
     )
 

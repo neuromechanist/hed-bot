@@ -497,7 +497,6 @@ async function handleAnnotateStream(request, env, corsHeaders, CONFIG) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (error) {
@@ -719,7 +718,6 @@ async function handleAnnotateFromImageStream(request, env, corsHeaders, CONFIG) 
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Content-Type-Options': 'nosniff',
       },
     });
   } catch (error) {

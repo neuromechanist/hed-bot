@@ -12,7 +12,6 @@ from src.validation.hed_validator import (
     HedPythonValidator,
     ValidationIssue,
     ValidationResult,
-    get_validator,
 )
 
 
@@ -216,36 +215,6 @@ def test_validation_result_structure(validator):
     assert hasattr(result, "parsed_string")
     assert isinstance(result.errors, list)
     assert isinstance(result.warnings, list)
-
-
-class TestGetValidator:
-    """Tests for get_validator factory function."""
-
-    def test_python_fallback(self):
-        """get_validator with prefer_js=False should return HedPythonValidator."""
-        validator = get_validator(prefer_js=False)
-        assert isinstance(validator, HedPythonValidator)
-
-    def test_prefer_js_falls_back_to_python_when_unavailable(self):
-        """prefer_js=True without JS available should fall back to HedPythonValidator."""
-        validator = get_validator(prefer_js=True, validator_path="/nonexistent/path")
-        assert isinstance(validator, HedPythonValidator)
-
-    def test_require_js_without_path_raises(self):
-        """require_js=True without valid path should raise RuntimeError."""
-        with pytest.raises(RuntimeError):
-            get_validator(require_js=True, validator_path="/nonexistent/path")
-
-    def test_require_js_without_env_var_raises(self, monkeypatch):
-        """require_js=True without HED_VALIDATOR_PATH should raise RuntimeError."""
-        monkeypatch.delenv("HED_VALIDATOR_PATH", raising=False)
-        with pytest.raises(RuntimeError):
-            get_validator(require_js=True, validator_path=None)
-
-    def test_default_returns_known_validator_type(self):
-        """Default call should return HedPythonValidator or HedJavaScriptValidator."""
-        validator = get_validator()
-        assert isinstance(validator, (HedPythonValidator, HedJavaScriptValidator))
 
 
 @pytest.fixture

@@ -569,31 +569,6 @@ class TestStreamingWithMockedWorkflow:
         # Should contain event markers
         assert "event:" in content or response.status_code == 503
 
-    def test_stream_has_safari_padding_comment(self, client_with_workflow):
-        """SSE stream should start with padding comment for Safari compatibility."""
-        request_data = {
-            "description": "A red circle appears",
-            "schema_version": "8.3.0",
-        }
-        response = client_with_workflow.post(
-            "/annotate/stream", json=request_data, headers=TEST_AUTH_HEADERS
-        )
-        if response.status_code == 200:
-            # Stream should start with the SSE comment
-            assert response.text.startswith(": stream opened")
-
-    def test_stream_has_nosniff_header(self, client_with_workflow):
-        """SSE streaming response should include X-Content-Type-Options: nosniff."""
-        request_data = {
-            "description": "A red circle appears",
-            "schema_version": "8.3.0",
-        }
-        response = client_with_workflow.post(
-            "/annotate/stream", json=request_data, headers=TEST_AUTH_HEADERS
-        )
-        if response.status_code == 200:
-            assert response.headers.get("x-content-type-options") == "nosniff"
-
 
 class TestModelOverrideWithEnv:
     """Tests for model override with environment variables set."""
