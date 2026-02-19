@@ -57,7 +57,7 @@ async def process_feedback_file(
 
     # Get model configuration from environment
     model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
-    provider = os.getenv("LLM_PROVIDER_PREFERENCE", "Cerebras")
+    provider = os.getenv("LLM_PROVIDER_PREFERENCE", "")
 
     # Create LLM
     llm = create_openrouter_llm(
