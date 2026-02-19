@@ -100,6 +100,7 @@ class ValidationAgent:
 
         # Validator is lazily initialized on first use via _get_or_create_validator
         self._validator: HedJavaScriptValidator | HedPythonValidator | None = None
+        self._cached_schema_version: str | None = None
 
         # Direct JS validator creation when use_javascript=True
         if use_javascript:
@@ -252,6 +253,15 @@ class ValidationAgent:
             Configured validator instance
         """
         if self._validator is not None:
+            if (
+                self._cached_schema_version is not None
+                and self._cached_schema_version != schema_version
+            ):
+                logger.warning(
+                    "Validator cached with schema %s, requested %s; reusing cached validator",
+                    self._cached_schema_version,
+                    schema_version,
+                )
             return self._validator
 
         self._validator = get_validator(
@@ -259,6 +269,7 @@ class ValidationAgent:
             prefer_js=self.use_javascript,
             validator_path=self.validator_path,
         )
+        self._cached_schema_version = schema_version
         return self._validator
 
     def _run_validation(self, annotation: str, schema_version: str) -> ValidationResult:
@@ -286,6 +297,8 @@ class ValidationAgent:
                 ],
                 warnings=[],
             )
+        except MemoryError:
+            raise
         except Exception as e:
             logger.error("Unexpected error initializing validator: %s", e, exc_info=True)
             return ValidationResult(
@@ -370,12 +383,12 @@ class ValidationAgent:
 
         except Exception as e:
             # If parsing fails, try regex-based detection as fallback
-            logger.warning("HedString parsing failed, falling back to regex: %s", e)
+            logger.warning("HedString parsing failed, falling back to regex: %s", e, exc_info=True)
             try:
                 schema = load_schema_version(schema_version)
                 extended_tags = self._detect_extensions_via_regex(annotation, schema)
             except Exception as e2:
-                logger.warning("Regex fallback also failed: %s", e2)
+                logger.warning("Regex fallback also failed: %s", e2, exc_info=True)
 
         return extended_tags
 
@@ -411,7 +424,7 @@ class ValidationAgent:
                 if tag_entry and tag_entry.has_attribute("extensionAllowed"):
                     extended_tags.append(match)
             except Exception as e:
-                # If we can't check the schema, log it but continue
-                logger.debug("Could not check if '%s' allows extensions: %s", base_tag, e)
+                # If we can't check the schema, log at warning level (silent in debug is invisible in prod)
+                logger.warning("Could not check if '%s' allows extensions: %s", base_tag, e)
 
         return extended_tags
