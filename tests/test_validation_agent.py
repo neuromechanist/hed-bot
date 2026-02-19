@@ -415,8 +415,7 @@ class TestGetOrCreateValidatorSchemaVersionWarning:
             validation_agent._get_or_create_validator("8.3.0")
 
         assert any(
-            "8.4.0" in record.message and "8.3.0" in record.message
-            for record in caplog.records
+            "8.4.0" in record.message and "8.3.0" in record.message for record in caplog.records
         )
 
     def test_no_warning_on_same_schema_version(self, validation_agent, caplog):
@@ -428,6 +427,4 @@ class TestGetOrCreateValidatorSchemaVersionWarning:
         with caplog.at_level(logging.WARNING, logger="src.agents.validation_agent"):
             validation_agent._get_or_create_validator("8.4.0")
 
-        assert not any(
-            "reusing cached" in record.message for record in caplog.records
-        )
+        assert not any("reusing cached" in record.message for record in caplog.records)
