@@ -1726,17 +1726,19 @@ Example: A red circle appears on the left side of the screen and the participant
                 throw new Error(errorData.detail || `Server error: ${response.status}`);
             }
 
-            const result = await response.json();
+            try {
+                const result = await response.json();
 
-            // Store for feedback
-            lastResultData = result;
-            lastInputDescription = result.image_description;
+                // Store for feedback
+                lastResultData = result;
+                lastInputDescription = result.image_description;
 
-            // Display results
-            displayImageAnnotationResults(result);
-
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn-image').disabled = false;
+                // Display results
+                displayImageAnnotationResults(result);
+            } finally {
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn-image').disabled = false;
+            }
         }
 
         function displayImageAnnotationResults(result) {
@@ -1979,8 +1981,6 @@ Example: A red circle appears on the left side of the screen and the participant
 
                 const data = await response.json();
                 displayResults(data);
-            } catch (error) {
-                displayError(error.message);
             } finally {
                 document.getElementById('progressStatus').classList.remove('active');
                 document.getElementById('generateBtn').disabled = false;
