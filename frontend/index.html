@@ -1753,12 +1753,16 @@ Example: A red circle appears on the left side of the screen and the participant
                 descriptionBox.id = 'imageDescriptionBox';
                 descriptionBox.className = 'annotation-box';
                 descriptionBox.style.borderLeftColor = '#E99852';
-                annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
+                if (annotationBox) {
+                    annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
+                } else {
+                    resultsDiv.prepend(descriptionBox);
+                }
             }
 
             descriptionBox.innerHTML = `
                 <h3>Generated Image Description</h3>
-                <div class="annotation-text">${result.image_description}</div>
+                <div class="annotation-text">${result.image_description || ''}</div>
             `;
 
             // Display annotation and other results using existing function
