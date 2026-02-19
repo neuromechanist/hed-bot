@@ -97,7 +97,7 @@ def create_openrouter_workflow(
         annotation_model: Model for annotation (default: ANNOTATION_MODEL env or Claude Haiku 4.5)
         annotation_provider: Provider for annotation model (default: ANNOTATION_PROVIDER env or "anthropic")
         eval_model: Model for eval/assessment/feedback (default: EVALUATION_MODEL env or Qwen3-235B)
-        eval_provider: Provider for eval models (default: EVALUATION_PROVIDER env or "Cerebras")
+        eval_provider: Provider for eval models (default: EVALUATION_PROVIDER env or "deepinfra/fp8")
         temperature: LLM temperature (default: 0.1)
         user_id: User ID for cache optimization (derived from API key if not provided)
         schema_dir: Path to HED schemas (None = fetch from GitHub)
@@ -111,7 +111,7 @@ def create_openrouter_workflow(
     default_annotation_model = os.getenv("ANNOTATION_MODEL", "anthropic/claude-haiku-4.5")
     default_annotation_provider = os.getenv("ANNOTATION_PROVIDER", "anthropic")
     default_eval_model = os.getenv("EVALUATION_MODEL", "qwen/qwen3-235b-a22b-2507")
-    default_eval_provider = os.getenv("EVALUATION_PROVIDER", "Cerebras")
+    default_eval_provider = os.getenv("EVALUATION_PROVIDER", "deepinfra/fp8")
 
     # Resolve final values: parameter > env var > default
     actual_annotation_model = get_model_name(annotation_model or default_annotation_model)
@@ -353,7 +353,7 @@ async def lifespan(app: FastAPI):
         print(f"  Annotation: {os.getenv('ANNOTATION_MODEL', 'anthropic/claude-haiku-4.5')}")
         print(f"  Evaluation: {os.getenv('EVALUATION_MODEL', 'qwen/qwen3-235b-a22b-2507')}")
         print(f"  Provider (annotation): {os.getenv('ANNOTATION_PROVIDER', 'anthropic')}")
-        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', 'Cerebras')}")
+        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', 'deepinfra/fp8')}")
 
         workflow = create_openrouter_workflow(
             api_key=openrouter_api_key,
@@ -1533,7 +1533,7 @@ async def submit_feedback(request: FeedbackRequest) -> FeedbackResponse:
 
                 # Create LLM for triage
                 model = os.getenv("ANNOTATION_MODEL", "openai/gpt-oss-120b")
-                provider = os.getenv("LLM_PROVIDER_PREFERENCE", "Cerebras")
+                provider = os.getenv("LLM_PROVIDER_PREFERENCE", "deepinfra/fp8")
                 llm = create_openrouter_llm(
                     model=model,
                     api_key=openrouter_key,

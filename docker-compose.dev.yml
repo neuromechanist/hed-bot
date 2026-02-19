@@ -21,7 +21,7 @@ services:
 
       # OpenRouter Configuration
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - LLM_PROVIDER_PREFERENCE=${LLM_PROVIDER_PREFERENCE:-Cerebras}
+      - LLM_PROVIDER_PREFERENCE=${LLM_PROVIDER_PREFERENCE:-deepinfra/fp8}
       - ANNOTATION_MODEL=${ANNOTATION_MODEL:-openai/gpt-oss-120b}
       - EVALUATION_MODEL=${EVALUATION_MODEL:-qwen/qwen3-235b-a22b-2507}
       - ASSESSMENT_MODEL=${ASSESSMENT_MODEL:-openai/gpt-oss-120b}
