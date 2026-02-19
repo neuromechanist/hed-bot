@@ -1586,6 +1586,7 @@ Example: A red circle appears on the left side of the screen and the participant
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let currentEvent = null; // persists across chunks so event: and data: lines can arrive in separate chunks
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -1597,7 +1598,6 @@ Example: A red circle appears on the left side of the screen and the participant
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-                let currentEvent = null;
                 for (const line of lines) {
                     if (line.startsWith('event: ')) {
                         currentEvent = line.substring(7);
@@ -1613,7 +1613,6 @@ Example: A red circle appears on the left side of the screen and the participant
             buffer += decoder.decode(); // Flush remaining bytes
             if (buffer.trim()) {
                 const lines = buffer.split('\n');
-                let currentEvent = null;
                 for (const line of lines) {
                     if (line.startsWith('event: ')) {
                         currentEvent = line.substring(7);
@@ -1828,6 +1827,7 @@ Example: A red circle appears on the left side of the screen and the participant
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let currentEvent = null; // persists across chunks so event: and data: lines can arrive in separate chunks
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -1839,7 +1839,6 @@ Example: A red circle appears on the left side of the screen and the participant
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-                let currentEvent = null;
                 for (const line of lines) {
                     if (line.startsWith('event: ')) {
                         currentEvent = line.substring(7);
@@ -1855,7 +1854,6 @@ Example: A red circle appears on the left side of the screen and the participant
             buffer += decoder.decode(); // Flush remaining bytes
             if (buffer.trim()) {
                 const lines = buffer.split('\n');
-                let currentEvent = null;
                 for (const line of lines) {
                     if (line.startsWith('event: ')) {
                         currentEvent = line.substring(7);
