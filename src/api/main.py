@@ -128,7 +128,7 @@ def create_openrouter_workflow(
     else:
         actual_annotation_provider = default_annotation_provider
 
-    actual_eval_provider = eval_provider or default_eval_provider
+    actual_eval_provider = eval_provider or default_eval_provider or None
 
     # Create LLMs
     annotation_llm = create_openrouter_llm(
@@ -353,7 +353,7 @@ async def lifespan(app: FastAPI):
         print(f"  Annotation: {os.getenv('ANNOTATION_MODEL', 'anthropic/claude-haiku-4.5')}")
         print(f"  Evaluation: {os.getenv('EVALUATION_MODEL', 'qwen/qwen3-235b-a22b-2507')}")
         print(f"  Provider (annotation): {os.getenv('ANNOTATION_PROVIDER', 'anthropic')}")
-        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', 'auto')}")
+        print(f"  Provider (eval): {os.getenv('EVALUATION_PROVIDER', '') or '(auto-routed)'}")
 
         workflow = create_openrouter_workflow(
             api_key=openrouter_api_key,
