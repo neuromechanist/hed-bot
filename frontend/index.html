@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HEDit - HED Annotation Generator</title>
+    <meta name="description" content="From plain English or images to valid HED annotations, automatically." />
+    <meta property="og:title" content="HEDit" />
+    <meta property="og:description" content="From plain English or images to valid HED annotations, automatically." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hedit.pages.dev" />
+    <meta property="og:image" content="https://hedit.pages.dev/assets/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HEDit" />
+    <meta name="twitter:description" content="From plain English or images to valid HED annotations, automatically." />
+    <meta name="twitter:image" content="https://hedit.pages.dev/assets/og-image.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1586,51 +1598,63 @@ Example: A red circle appears on the left side of the screen and the participant
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let currentEvent = null; // persists across chunks so event: and data: lines can arrive in separate chunks
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                buffer += decoder.decode(value, { stream: true });
+                    buffer += decoder.decode(value, { stream: true });
 
-                // Parse SSE events from buffer
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                    // Parse SSE events from buffer
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-                let currentEvent = null;
-                for (const line of lines) {
-                    if (line.startsWith('event: ')) {
-                        currentEvent = line.substring(7);
-                    } else if (line.startsWith('data: ') && currentEvent) {
-                        const data = JSON.parse(line.substring(6));
-                        handleImageStreamEvent(currentEvent, data);
-                        currentEvent = null;
-                    }
-                }
-            }
-
-            // Flush decoder and process any remaining data (Safari compatibility)
-            buffer += decoder.decode(); // Flush remaining bytes
-            if (buffer.trim()) {
-                const lines = buffer.split('\n');
-                let currentEvent = null;
-                for (const line of lines) {
-                    if (line.startsWith('event: ')) {
-                        currentEvent = line.substring(7);
-                    } else if (line.startsWith('data: ') && currentEvent) {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            handleImageStreamEvent(currentEvent, data);
-                        } catch (e) {
-                            console.warn('Failed to parse SSE data:', line);
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.substring(7).trim();
+                        } else if (line.startsWith('data: ') && currentEvent) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleImageStreamEvent(currentEvent, data);
+                            } catch (e) {
+                                console.warn('[HEDit] Failed to process SSE event', currentEvent, ':', e);
+                                if (currentEvent === 'result') {
+                                    displayError('Failed to display results. Please try again.');
+                                }
+                            }
+                            currentEvent = null;
                         }
-                        currentEvent = null;
                     }
                 }
-            }
 
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn-image').disabled = false;
+                // Flush decoder and process any remaining data (Safari compatibility)
+                buffer += decoder.decode(); // Flush remaining bytes
+                if (buffer.trim()) {
+                    const lines = buffer.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.substring(7).trim();
+                        } else if (line.startsWith('data: ') && currentEvent) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleImageStreamEvent(currentEvent, data);
+                            } catch (e) {
+                                console.warn('[HEDit] Failed to process SSE event', currentEvent, ':', e);
+                                if (currentEvent === 'result') {
+                                    displayError('Failed to display results. Please try again.');
+                                }
+                            }
+                            currentEvent = null;
+                        }
+                    }
+                }
+            } finally {
+                try { reader.cancel(); } catch (_) {}
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn-image').disabled = false;
+            }
         }
 
         function handleImageStreamEvent(eventType, data) {
@@ -1670,6 +1694,8 @@ Example: A red circle appears on the left side of the screen and the participant
                 case 'done':
                     // Streaming complete
                     break;
+                default:
+                    console.warn('[HEDit] Unknown SSE event:', eventType, data);
             }
         }
 
@@ -1711,17 +1737,19 @@ Example: A red circle appears on the left side of the screen and the participant
                 throw new Error(errorData.detail || `Server error: ${response.status}`);
             }
 
-            const result = await response.json();
+            try {
+                const result = await response.json();
 
-            // Store for feedback
-            lastResultData = result;
-            lastInputDescription = result.image_description;
+                // Store for feedback
+                lastResultData = result;
+                lastInputDescription = result.image_description;
 
-            // Display results
-            displayImageAnnotationResults(result);
-
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn-image').disabled = false;
+                // Display results
+                displayImageAnnotationResults(result);
+            } finally {
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn-image').disabled = false;
+            }
         }
 
         function displayImageAnnotationResults(result) {
@@ -1738,12 +1766,16 @@ Example: A red circle appears on the left side of the screen and the participant
                 descriptionBox.id = 'imageDescriptionBox';
                 descriptionBox.className = 'annotation-box';
                 descriptionBox.style.borderLeftColor = '#E99852';
-                annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
+                if (annotationBox) {
+                    annotationBox.parentNode.insertBefore(descriptionBox, annotationBox);
+                } else {
+                    resultsDiv.prepend(descriptionBox);
+                }
             }
 
             descriptionBox.innerHTML = `
                 <h3>Generated Image Description</h3>
-                <div class="annotation-text">${result.image_description}</div>
+                <div class="annotation-text">${result.image_description || ''}</div>
             `;
 
             // Display annotation and other results using existing function
@@ -1828,51 +1860,63 @@ Example: A red circle appears on the left side of the screen and the participant
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let currentEvent = null; // persists across chunks so event: and data: lines can arrive in separate chunks
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-                buffer += decoder.decode(value, { stream: true });
+                    buffer += decoder.decode(value, { stream: true });
 
-                // Parse SSE events from buffer
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                    // Parse SSE events from buffer
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
-                let currentEvent = null;
-                for (const line of lines) {
-                    if (line.startsWith('event: ')) {
-                        currentEvent = line.substring(7);
-                    } else if (line.startsWith('data: ') && currentEvent) {
-                        const data = JSON.parse(line.substring(6));
-                        handleStreamEvent(currentEvent, data);
-                        currentEvent = null;
-                    }
-                }
-            }
-
-            // Flush decoder and process any remaining data (Safari compatibility)
-            buffer += decoder.decode(); // Flush remaining bytes
-            if (buffer.trim()) {
-                const lines = buffer.split('\n');
-                let currentEvent = null;
-                for (const line of lines) {
-                    if (line.startsWith('event: ')) {
-                        currentEvent = line.substring(7);
-                    } else if (line.startsWith('data: ') && currentEvent) {
-                        try {
-                            const data = JSON.parse(line.substring(6));
-                            handleStreamEvent(currentEvent, data);
-                        } catch (e) {
-                            console.warn('Failed to parse SSE data:', line);
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.substring(7).trim();
+                        } else if (line.startsWith('data: ') && currentEvent) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleStreamEvent(currentEvent, data);
+                            } catch (e) {
+                                console.warn('[HEDit] Failed to process SSE event', currentEvent, ':', e);
+                                if (currentEvent === 'result') {
+                                    displayError('Failed to display results. Please try again.');
+                                }
+                            }
+                            currentEvent = null;
                         }
-                        currentEvent = null;
                     }
                 }
-            }
 
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn').disabled = false;
+                // Flush decoder and process any remaining data (Safari compatibility)
+                buffer += decoder.decode(); // Flush remaining bytes
+                if (buffer.trim()) {
+                    const lines = buffer.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('event: ')) {
+                            currentEvent = line.substring(7).trim();
+                        } else if (line.startsWith('data: ') && currentEvent) {
+                            try {
+                                const data = JSON.parse(line.substring(6));
+                                handleStreamEvent(currentEvent, data);
+                            } catch (e) {
+                                console.warn('[HEDit] Failed to process SSE event', currentEvent, ':', e);
+                                if (currentEvent === 'result') {
+                                    displayError('Failed to display results. Please try again.');
+                                }
+                            }
+                            currentEvent = null;
+                        }
+                    }
+                }
+            } finally {
+                try { reader.cancel(); } catch (_) {}
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
+            }
         }
 
         function handleStreamEvent(eventType, data) {
@@ -1900,6 +1944,8 @@ Example: A red circle appears on the left side of the screen and the participant
                 case 'done':
                     // Streaming complete
                     break;
+                default:
+                    console.warn('[HEDit] Unknown SSE event:', eventType, data);
             }
         }
 
@@ -1945,8 +1991,6 @@ Example: A red circle appears on the left side of the screen and the participant
 
                 const data = await response.json();
                 displayResults(data);
-            } catch (error) {
-                displayError(error.message);
             } finally {
                 document.getElementById('progressStatus').classList.remove('active');
                 document.getElementById('generateBtn').disabled = false;

@@ -4,6 +4,7 @@ This module defines the multi-agent workflow that orchestrates
 annotation, validation, evaluation, and assessment.
 """
 
+import logging
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
@@ -16,6 +17,9 @@ from src.agents.feedback_summarizer import FeedbackSummarizer
 from src.agents.state import HedAnnotationState
 from src.agents.validation_agent import ValidationAgent
 from src.utils.schema_loader import HedSchemaLoader
+from src.validation.hed_lsp import HedLspClient, is_hed_lsp_available
+
+logger = logging.getLogger(__name__)
 
 
 class HedAnnotationWorkflow:
@@ -42,6 +46,7 @@ class HedAnnotationWorkflow:
         schema_dir: Path | str | None = None,
         validator_path: Path | None = None,
         use_js_validator: bool = True,
+        enable_semantic_search: bool = True,
     ) -> None:
         """Initialize the workflow.
 
@@ -53,9 +58,12 @@ class HedAnnotationWorkflow:
             schema_dir: Directory containing JSON schemas
             validator_path: Path to hed-javascript for validation
             use_js_validator: Whether to use JavaScript validator
+            enable_semantic_search: Whether to use hed-lsp CLI for tag suggestions
         """
         # Store schema directory (None means use HED library to fetch from GitHub)
         self.schema_dir = schema_dir
+        # Enable semantic search only if hed-lsp CLI is available
+        self.enable_semantic_search = enable_semantic_search and is_hed_lsp_available()
 
         # Initialize legacy schema loader for validation
         self.schema_loader = HedSchemaLoader()
@@ -76,6 +84,16 @@ class HedAnnotationWorkflow:
         self.assessment_agent = AssessmentAgent(assess_llm, schema_dir=self.schema_dir)
         self.feedback_summarizer = FeedbackSummarizer(feed_llm)
 
+        # Initialize hed-lsp client for semantic search
+        self.hed_lsp_client: HedLspClient | None = None
+        if self.enable_semantic_search:
+            try:
+                self.hed_lsp_client = HedLspClient()
+                logger.info("[WORKFLOW] hed-lsp CLI available for semantic tag suggestions")
+            except RuntimeError as e:
+                logger.warning(f"[WORKFLOW] hed-lsp CLI not available: {e}")
+                self.enable_semantic_search = False
+
         # Build graph
         self.graph = self._build_graph()
 
@@ -89,6 +107,8 @@ class HedAnnotationWorkflow:
         workflow = StateGraph(HedAnnotationState)
 
         # Add nodes
+        if self.enable_semantic_search:
+            workflow.add_node("semantic_preprocess", self._semantic_preprocess_node)
         workflow.add_node("annotate", self._annotate_node)
         workflow.add_node("validate", self._validate_node)
         workflow.add_node("summarize_feedback", self._summarize_feedback_node)
@@ -96,7 +116,11 @@ class HedAnnotationWorkflow:
         workflow.add_node("assess", self._assess_node)
 
         # Add edges
-        workflow.set_entry_point("annotate")
+        if self.enable_semantic_search:
+            workflow.set_entry_point("semantic_preprocess")
+            workflow.add_edge("semantic_preprocess", "annotate")
+        else:
+            workflow.set_entry_point("annotate")
 
         # After annotation, always validate
         workflow.add_edge("annotate", "validate")
@@ -129,7 +153,60 @@ class HedAnnotationWorkflow:
         # After assessment, always end
         workflow.add_edge("assess", END)
 
-        return workflow.compile()
+        return workflow.compile()  # type: ignore[return-value]
+
+    async def _semantic_preprocess_node(self, state: HedAnnotationState) -> dict:
+        """Semantic preprocessing node: Use hed-lsp CLI to suggest relevant tags.
+
+        This node runs before annotation to provide semantic hints based on
+        the input description. Uses hed-lsp CLI for tag suggestions.
+        Only runs on the first iteration.
+
+        Args:
+            state: Current workflow state
+
+        Returns:
+            State update with extracted_keywords and semantic_hints
+        """
+        # Only run preprocessing on first iteration
+        if state.get("total_iterations", 0) > 0:
+            logger.debug("[WORKFLOW] Skipping semantic preprocessing (not first iteration)")
+            return {}
+
+        logger.info("[WORKFLOW] Entering semantic_preprocess node")
+
+        # Use hed-lsp CLI to suggest tags from the description
+        semantic_hints = []
+        keywords: list[str] = []
+
+        if self.hed_lsp_client:
+            try:
+                # Get tag suggestions directly from the description
+                result = self.hed_lsp_client.suggest(state["input_description"])
+                if result.success:
+                    semantic_hints = [
+                        {
+                            "tag": s.tag,
+                            "prefix": "",  # hed-lsp returns full tags
+                            "score": s.score or 0.0,
+                            "source": "hed-lsp",
+                        }
+                        for s in result.suggestions
+                    ]
+                    # Extract keywords from the tags for logging
+                    keywords = [s.tag.split("/")[-1] for s in result.suggestions]
+                    logger.info(
+                        f"[WORKFLOW] hed-lsp suggested {len(semantic_hints)} tags: {keywords[:5]}..."
+                    )
+                else:
+                    logger.warning(f"[WORKFLOW] hed-lsp suggestion failed: {result.error}")
+            except Exception as e:
+                logger.warning("[WORKFLOW] hed-lsp error: %s", e, exc_info=True)
+
+        return {
+            "extracted_keywords": keywords,
+            "semantic_hints": semantic_hints,
+        }
 
     async def _annotate_node(self, state: HedAnnotationState) -> dict:
         """Annotation node: Generate or refine HED annotation.
@@ -305,10 +382,11 @@ class HedAnnotationWorkflow:
     async def run(
         self,
         input_description: str,
-        schema_version: str = "8.3.0",
+        schema_version: str = "8.4.0",
         max_validation_attempts: int = 5,
         max_total_iterations: int = 10,
         run_assessment: bool = False,
+        no_extend: bool = False,
         config: dict | None = None,
     ) -> HedAnnotationState:
         """Run the complete annotation workflow.
@@ -319,6 +397,7 @@ class HedAnnotationWorkflow:
             max_validation_attempts: Maximum validation retry attempts
             max_total_iterations: Maximum total iterations to prevent infinite loops
             run_assessment: Whether to run final assessment (default: False)
+            no_extend: If True, prohibit tag extensions (use only existing vocabulary)
             config: Optional LangGraph config (e.g., recursion_limit)
 
         Returns:
@@ -333,9 +412,10 @@ class HedAnnotationWorkflow:
             max_validation_attempts,
             max_total_iterations,
             run_assessment,
+            no_extend=no_extend,
         )
 
         # Run workflow
-        final_state = await self.graph.ainvoke(initial_state, config=config)
+        final_state = await self.graph.ainvoke(initial_state, config=config)  # type: ignore[attr-defined]
 
-        return final_state
+        return final_state  # type: ignore[no-any-return]
