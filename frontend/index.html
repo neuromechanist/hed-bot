@@ -1639,11 +1639,10 @@ Example: A red circle appears on the left side of the screen and the participant
                     }
                 }
             } finally {
-                reader.cancel();
+                try { reader.cancel(); } catch (_) {}
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn-image').disabled = false;
             }
-
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn-image').disabled = false;
         }
 
         function handleImageStreamEvent(eventType, data) {
@@ -1902,11 +1901,10 @@ Example: A red circle appears on the left side of the screen and the participant
                     }
                 }
             } finally {
-                reader.cancel();
+                try { reader.cancel(); } catch (_) {}
+                document.getElementById('progressStatus').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
             }
-
-            document.getElementById('progressStatus').classList.remove('active');
-            document.getElementById('generateBtn').disabled = false;
         }
 
         function handleStreamEvent(eventType, data) {
