@@ -133,11 +133,12 @@ class HedLspClient:
         self.use_semantic = use_semantic if use_semantic is not None else get_default_use_semantic()
         self.max_results = max_results if max_results is not None else get_default_max_results()
 
-    def suggest(self, *queries: str) -> HedSuggestResult:
+    def suggest(self, *queries: str, use_semantic: bool | None = None) -> HedSuggestResult:
         """Suggest HED tags for one or more natural language descriptions.
 
         Args:
             *queries: One or more natural language descriptions to convert to HED tags
+            use_semantic: Override instance semantic setting for this call (thread-safe)
 
         Returns:
             HedSuggestResult with suggested tags or error information
@@ -149,6 +150,8 @@ class HedLspClient:
                 error="No queries provided",
             )
 
+        effective_semantic = self.use_semantic if use_semantic is None else use_semantic
+
         # Build command
         cmd = [
             "hed-suggest",
@@ -159,7 +162,7 @@ class HedLspClient:
             str(self.max_results),
         ]
 
-        if self.use_semantic:
+        if effective_semantic:
             cmd.append("--semantic")
 
         # Add all query terms
@@ -234,6 +237,9 @@ class HedLspClient:
                                         )
                                     )
 
+            # Filter out any empty-tag entries from malformed CLI output
+            suggestions = [s for s in suggestions if s.tag]
+
             return HedSuggestResult(
                 success=True,
                 suggestions=suggestions,
@@ -252,6 +258,7 @@ class HedLspClient:
                 error=f"Failed to parse JSON output: {e}",
             )
         except Exception as e:
+            logger.warning("hed-suggest command failed unexpectedly: %s", e, exc_info=True)
             return HedSuggestResult(
                 success=False,
                 suggestions=[],
@@ -275,20 +282,15 @@ class HedLspClient:
         Returns:
             HedSuggestResult with suggested tags
         """
-        # Temporarily override semantic mode if specified
-        original_semantic = self.use_semantic
+        # Compute effective semantic flag locally - no mutation of self (thread-safe)
         if mode == "semantic":
-            self.use_semantic = True
+            use_semantic: bool | None = True
         elif mode == "basic":
-            self.use_semantic = False
+            use_semantic = False
+        else:
+            use_semantic = None  # use instance default
 
-        try:
-            # Split description into keywords for better matching
-            # Simple approach: use the full description as a query
-            return self.suggest(description)
-        finally:
-            # Restore original setting
-            self.use_semantic = original_semantic
+        return self.suggest(description, use_semantic=use_semantic)
 
 
 def get_hed_suggestions(
