@@ -85,3 +85,6 @@ coverage-*.xml
 
 # UV package manager
 uv.lock
+
+# Local development tools (tool-specific artifacts, not project files)
+.hedit/
