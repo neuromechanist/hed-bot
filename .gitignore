@@ -88,3 +88,4 @@ uv.lock
 
 # Local development tools (tool-specific artifacts, not project files)
 .hedit/
+.serena/cache/
